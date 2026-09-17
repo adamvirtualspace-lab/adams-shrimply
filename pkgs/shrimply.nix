@@ -65,7 +65,7 @@ rustPlatform.buildRustPackage {
   postPatch = ''
     substituteInPlace crates/media/visual/manim/manim-bridge/src/lib.rs \
       --replace-fail 'Path::new(env!("CARGO_MANIFEST_DIR")).join("python")' \
-      'Path::new("'"$out"'/share/shrimply/crates/media/visual/manim/manim-bridge/python")'
+      'PathBuf::from("'"$out"'/share/shrimply/crates/media/visual/manim/manim-bridge/python")'
   '';
 
   nativeBuildInputs = [

@@ -1,0 +1,88 @@
+name: Nix Flake Build & Cachix Push
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/nix.yml"
+      - "flake.nix"
+      - "flake.lock"
+      - "pkgs/**"
+      - "crates/**"
+      - "assets/**"
+      - "vendor/**"
+      - "Cargo.lock"
+      - "Cargo.toml"
+      - "Makefile"
+      - "rust-toolchain.toml"
+  workflow_dispatch:
+    inputs:
+      cachix_cache:
+        description: "Cachix cache name (defaults to 'shrimply')"
+        required: false
+        type: string
+        default: "shrimply"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nix-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-cache:
+    name: Build Nix Package & Push to Cachix
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    env:
+      CACHIX_CACHE: ${{ inputs.cachix_cache || vars.CACHIX_CACHE_NAME || 'shrimply' }}
+      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+    steps:
+      - name: Maximize build space
+        run: |
+          echo "=== Disk space before cleanup ==="
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker system prune -af || true
+          echo "=== Disk space after cleanup ==="
+          df -h
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            extra-substituters = https://cache.nixos-cuda.org https://shrimply.cachix.org
+            extra-trusted-public-keys = cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M= shrimply.cachix.org-1:cAgdyBbGPgJZMWUP4PAQPVENeCYtGT7OPPkocvo+uuA=
+
+      - name: Setup Cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: ${{ env.CACHIX_CACHE }}
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - name: Build Shrimply via Nix Flake
+        run: nix build .#shrimply --print-build-logs
+
+      - name: Verify build artifacts
+        run: |
+          echo "=== Built binaries in result/bin ==="
+          ls -la result/bin/
+          test -x result/bin/shrimply
+          test -x result/bin/shrimply-editor
+          test -x result/bin/shrimply-mcp
+
+      - name: Explicitly push build result to Cachix
+        if: ${{ env.CACHIX_CACHE != '' && env.CACHIX_AUTH_TOKEN != '' }}
+        run: |
+          cachix push "${{ env.CACHIX_CACHE }}" ./result
