@@ -460,13 +460,10 @@ fn choose_otio_settings(
     loader: Rc<RefCell<ProjectLoader>>,
 ) {
     let selector = ProjectSettingsSelector::new();
-    let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    content.append(&selector.preset);
-    content.append(&selector.group);
     let dialog = adw::AlertDialog::builder()
         .heading(tr!("OTIO Project Settings").as_ref())
         .body(tr!("OTIO does not include the Kdenlive project profile.").as_ref())
-        .extra_child(&content)
+        .extra_child(&selector.group)
         .build();
     dialog.add_responses_i18n(&[("cancel", "Cancel"), ("import", "Import")]);
     dialog.set_default_response(Some("import"));

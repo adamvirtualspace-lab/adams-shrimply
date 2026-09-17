@@ -10,7 +10,6 @@ use shrimply_project_types::{
 use crate::ui::{Number2Picker, control_row, dropdown};
 
 pub struct ProjectSettingsSelector {
-    pub preset: gtk::Widget,
     pub group: adw::PreferencesGroup,
     model: Rc<Cell<ProjectSettings>>,
 }
@@ -100,6 +99,7 @@ impl ProjectSettingsSelector {
             }
         });
         let controls = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        controls.append(&control_row("Preset", &preset));
         controls.append(&control_row("Resolution", &resolution.widget));
         controls.append(&control_row("Frame Rate", &fps));
         let settings = adw::PreferencesGroup::builder()
@@ -107,7 +107,6 @@ impl ProjectSettingsSelector {
             .build();
         settings.add(&controls);
         Self {
-            preset: control_row("Preset", &preset),
             group: settings,
             model,
         }

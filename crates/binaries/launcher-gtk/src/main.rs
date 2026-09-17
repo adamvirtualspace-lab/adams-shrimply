@@ -445,8 +445,6 @@ fn show_create_project(window: &adw::ApplicationWindow, app: &adw::Application) 
     }));
     let names = adw::PreferencesGroup::new();
     names.add(&content);
-    let presets = adw::PreferencesGroup::new();
-    presets.add(&selector.preset);
     let create = adw::ButtonRow::builder()
         .title(tr!("Create Project").as_ref())
         .build();
@@ -455,7 +453,6 @@ fn show_create_project(window: &adw::ApplicationWindow, app: &adw::Application) 
     actions.add(&create);
     let page = adw::PreferencesPage::new();
     page.add(&names);
-    page.add(&presets);
     page.add(&selector.group);
     page.add(&actions);
     let dialog = adw::PreferencesDialog::builder()
