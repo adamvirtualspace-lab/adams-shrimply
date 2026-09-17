@@ -2,7 +2,10 @@ use adw::prelude::*;
 use gtk::{gio, glib};
 use shrimply_components_gtk::project_settings::ProjectSettingsSelector;
 use shrimply_components_gtk::tr;
+use shrimply_components_gtk::ui::{SingleLineTextInput, control_row};
+use std::cell::RefCell;
 use std::path::Path;
+use std::rc::Rc;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -12,6 +15,7 @@ const DEFAULT_HEIGHT: i32 = 560;
 const RECENT_ROW_HEIGHT: i32 = 64;
 const PROJECT_INFO_WIDTH: i32 = 500;
 const PROJECT_PATH_LINES: i32 = 3;
+const CREATE_PROJECT_WIDTH: i32 = 520;
 
 fn main() -> glib::ExitCode {
     shrimply_process_reporting::diagnostics::init();
@@ -431,24 +435,18 @@ fn show_open_project(window: &adw::ApplicationWindow, app: &adw::Application) {
 
 fn show_create_project(window: &adw::ApplicationWindow, app: &adw::Application) {
     let selector = ProjectSettingsSelector::new();
-    let preset = selector.preset.clone();
-    let name = adw::EntryRow::builder()
-        .title(tr!("Project Name").as_ref())
-        .text(tr!("Untitled Project").as_ref())
-        .build();
-    let width = selector.width.clone();
-    let height = selector.height.clone();
-    let fps = selector.fps.clone();
+    let name = SingleLineTextInput::builder(tr!("Untitled Project").as_ref()).build();
+    let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+    content.append(&control_row("Project Name", &name));
+    let tags = Rc::new(RefCell::new(Vec::new()));
+    content.append(&shrimply_components_gtk::ui::tag_editor(Vec::new(), {
+        let tags = tags.clone();
+        move |next| *tags.borrow_mut() = next.to_vec()
+    }));
     let names = adw::PreferencesGroup::new();
-    names.add(&name);
+    names.add(&content);
     let presets = adw::PreferencesGroup::new();
-    presets.add(&preset);
-    let settings = adw::PreferencesGroup::builder()
-        .title(tr!("Project Settings").as_ref())
-        .build();
-    settings.add(&width);
-    settings.add(&height);
-    settings.add(&fps);
+    presets.add(&selector.preset);
     let create = adw::ButtonRow::builder()
         .title(tr!("Create Project").as_ref())
         .build();
@@ -458,11 +456,12 @@ fn show_create_project(window: &adw::ApplicationWindow, app: &adw::Application) 
     let page = adw::PreferencesPage::new();
     page.add(&names);
     page.add(&presets);
-    page.add(&settings);
+    page.add(&selector.group);
     page.add(&actions);
     let dialog = adw::PreferencesDialog::builder()
         .title(tr!("Create Project").as_ref())
         .search_enabled(false)
+        .content_width(CREATE_PROJECT_WIDTH)
         .build();
     dialog.add(&page);
 
@@ -476,6 +475,7 @@ fn show_create_project(window: &adw::ApplicationWindow, app: &adw::Application) 
         let app = app.clone();
         move |_| {
             let project_name = name.text().trim().to_string();
+            let project_tags = tags.borrow().clone();
             let Some((canvas_size, fps)) = selector.settings() else {
                 show_error(&window, "Could not create project", "Invalid frame rate.");
                 return;
@@ -516,6 +516,7 @@ fn show_create_project(window: &adw::ApplicationWindow, app: &adw::Application) 
                         &project_name,
                         canvas_size,
                         fps,
+                        &project_tags,
                     ) {
                         Ok(path) => path,
                         Err(error) => {
@@ -532,6 +533,7 @@ fn show_create_project(window: &adw::ApplicationWindow, app: &adw::Application) 
 }
 
 fn open_in_editor(window: &adw::ApplicationWindow, app: &adw::Application, path: &Path) {
+    tracing::info!(path = %path.display(), "Opening project from launcher");
     match shrimply_cross_ui_core::launcher::launch_editor(path) {
         Ok(mut editor) => {
             let mut hold = Some(app.hold());
@@ -564,7 +566,10 @@ fn open_in_editor(window: &adw::ApplicationWindow, app: &adw::Application, path:
                 }
             });
         }
-        Err(error) => show_error(window, "Could not start editor", &error),
+        Err(error) => {
+            tracing::error!(path = %path.display(), %error, "Could not start editor");
+            show_error(window, "Could not start editor", &error);
+        }
     }
 }
 

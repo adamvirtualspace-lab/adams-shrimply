@@ -399,7 +399,7 @@ define_class!(
                 .map(|path| PathBuf::from(path.to_string()))
                 .expect("the selected save location must be a file path");
             let path = match launcher::create_project(
-                path, &request.name, request.canvas_size, request.fps,
+                path, &request.name, request.canvas_size, request.fps, &[],
             ) {
                 Ok(path) => path,
                 Err(error) => {

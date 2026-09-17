@@ -157,12 +157,14 @@ pub fn create_project(
     name: &str,
     canvas_size: CanvasSize,
     fps: Fraction,
+    tags: &[String],
 ) -> Result<PathBuf, String> {
     if !has_shrimp_extension(&path) {
         path.set_extension("shrimp");
     }
     let project = project::Project {
         name: name.to_string(),
+        tags: project::normalize_tags(tags),
         fps,
         canvas_size,
         caption_tracks: vec![project::CaptionTrack::default()],
@@ -189,7 +191,7 @@ pub fn create_project_from_values(
         .get(frame_rate_index)
         .ok_or_else(|| "Invalid frame rate.".to_string())?
         .value;
-    create_project(path, name, CanvasSize { width, height }, fps)
+    create_project(path, name, CanvasSize { width, height }, fps, &[])
 }
 
 pub fn default_project_filename(name: &str) -> String {

@@ -30,9 +30,10 @@ impl Inspectable for Project {
             .on_commit(move |_| name_commit_controller.finish_live_edit())
             .build();
         config.add_control_row("Name", &name);
-        config.add_wide_control(&super::project_tags::control(
+        let tags_controller = context.inspector_core.clone();
+        config.add_wide_control(&shrimply_components_gtk::ui::tag_editor(
             project.tags,
-            context.inspector_core.clone(),
+            move |tags| tags_controller.set_project_tags(tags),
         ));
 
         let initial_fps = project.frame_rate;

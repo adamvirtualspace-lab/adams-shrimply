@@ -22,6 +22,7 @@ mod single_line_text_input;
 mod split_button;
 mod switch_row;
 mod tabs;
+mod tag_editor;
 mod tag_pill;
 
 pub use code_editor::{code_editor, configure_code_language};
@@ -53,4 +54,5 @@ pub use single_line_text_input::{SingleLineTextInput, SingleLineTextInputBuilder
 pub use split_button::split_button;
 pub use switch_row::switch_row;
 pub use tabs::tabs;
+pub use tag_editor::tag_editor;
 pub use tag_pill::tag_pill;

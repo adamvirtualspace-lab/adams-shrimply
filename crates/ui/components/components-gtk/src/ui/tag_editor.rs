@@ -1,23 +1,22 @@
+use crate::{
+    tr,
+    ui::{SingleLineTextInput, control_row, tag_pill},
+};
 use adw::prelude::*;
 use gtk::glib;
-use shrimply_components_gtk::{
-    tr,
-    ui::{control_row, tag_pill},
-};
-use shrimply_inspector_core::InspectorController;
 use std::{cell::RefCell, rc::Rc};
 
-pub(super) fn control(tags: Vec<String>, controller: InspectorController) -> gtk::Box {
+pub fn tag_editor(tags: Vec<String>, on_change: impl Fn(&[String]) + 'static) -> gtk::Box {
+    let on_change = Rc::new(on_change);
     let tags = Rc::new(RefCell::new(tags));
     let content = gtk::Box::new(gtk::Orientation::Vertical, 6);
     let pills = adw::WrapBox::builder()
         .child_spacing(6)
         .line_spacing(6)
         .build();
-    populate(&pills, &tags, &controller);
-    let entry = gtk::Entry::builder()
-        .placeholder_text(tr!("Add tag").as_ref())
-        .hexpand(true)
+    populate(&pills, &tags, &on_change);
+    let entry = SingleLineTextInput::builder("")
+        .placeholder("Add tag")
         .build();
     entry.update_property(&[gtk::accessible::Property::Label(tr!("Add tag").as_ref())]);
     entry.connect_activate(glib::clone!(
@@ -27,8 +26,8 @@ pub(super) fn control(tags: Vec<String>, controller: InspectorController) -> gtk
             let tag = entry.text().trim().to_owned();
             if !tag.is_empty() && !tags.borrow().contains(&tag) {
                 tags.borrow_mut().push(tag);
-                controller.set_project_tags(&tags.borrow());
-                populate(&pills, &tags, &controller);
+                on_change(&tags.borrow());
+                populate(&pills, &tags, &on_change);
             }
             entry.set_text("");
         }
@@ -41,7 +40,7 @@ pub(super) fn control(tags: Vec<String>, controller: InspectorController) -> gtk
 fn populate(
     pills: &adw::WrapBox,
     tags: &Rc<RefCell<Vec<String>>>,
-    controller: &InspectorController,
+    on_change: &Rc<impl Fn(&[String]) + 'static>,
 ) {
     while let Some(child) = pills.first_child() {
         pills.remove(&child);
@@ -49,8 +48,7 @@ fn populate(
     pills.set_visible(!tags.borrow().is_empty());
     for tag in tags.borrow().iter() {
         let pill = tag_pill(tag, true);
-        let remove_label =
-            shrimply_components_gtk::i18n::text_args("Remove tag %{tag}", &[("tag", tag.clone())]);
+        let remove_label = crate::i18n::text_args("Remove tag %{tag}", &[("tag", tag.clone())]);
         pill.update_property(&[gtk::accessible::Property::Label(&remove_label)]);
         pill.set_tooltip_text(Some(&remove_label));
         pill.connect_clicked(glib::clone!(
@@ -59,13 +57,13 @@ fn populate(
             #[strong]
             tags,
             #[strong]
-            controller,
+            on_change,
             #[strong]
             tag,
             move |_| {
                 tags.borrow_mut().retain(|existing| existing != &tag);
-                controller.set_project_tags(&tags.borrow());
-                populate(&pills, &tags, &controller);
+                on_change(&tags.borrow());
+                populate(&pills, &tags, &on_change);
                 pills
                     .parent()
                     .expect("tag pills remain in their control")
