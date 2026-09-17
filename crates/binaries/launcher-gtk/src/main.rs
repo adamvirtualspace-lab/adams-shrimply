@@ -238,9 +238,50 @@ fn refresh_recents(
                 )
             })
             .unwrap_or_else(|| tr!("Last edited time unavailable").into_owned());
-        let row = adw::ActionRow::builder()
+        let details = gtk::Box::builder()
+            .orientation(gtk::Orientation::Vertical)
+            .spacing(4)
+            .hexpand(true)
+            .valign(gtk::Align::Center)
+            .build();
+        details.append(
+            &gtk::Label::builder()
+                .label(&recent.name)
+                .xalign(0.0)
+                .ellipsize(gtk::pango::EllipsizeMode::End)
+                .build(),
+        );
+        if !recent.tags.is_empty() {
+            let tags = adw::WrapBox::builder()
+                .child_spacing(6)
+                .line_spacing(6)
+                .build();
+            for tag in &recent.tags {
+                tags.append(&shrimply_components_gtk::ui::tag_pill(tag, false));
+            }
+            details.prepend(&tags);
+        }
+        details.append(
+            &gtk::Label::builder()
+                .label(&last_edited_subtitle)
+                .xalign(0.0)
+                .css_classes(["dim-label", "caption"])
+                .ellipsize(gtk::pango::EllipsizeMode::End)
+                .build(),
+        );
+        let content = gtk::Box::builder()
+            .orientation(gtk::Orientation::Horizontal)
+            .spacing(12)
+            .margin_top(12)
+            .margin_bottom(12)
+            .margin_start(12)
+            .margin_end(12)
+            .build();
+        content.append(&details);
+        let row = adw::PreferencesRow::builder()
             .title(&recent.name)
-            .subtitle(&last_edited_subtitle)
+            .use_markup(false)
+            .child(&content)
             .activatable(true)
             .height_request(RECENT_ROW_HEIGHT)
             .build();
@@ -263,12 +304,18 @@ fn refresh_recents(
         options.append(&delete);
         popover.set_child(Some(&options));
         menu.set_popover(Some(&popover));
-        row.add_suffix(&menu);
-        row.connect_activated({
+        content.append(&menu);
+        let card = gtk::ListBox::builder()
+            .selection_mode(gtk::SelectionMode::None)
+            .activate_on_single_click(true)
+            .css_classes(["boxed-list"])
+            .build();
+        card.append(&row);
+        card.connect_row_activated({
             let path = recent.path.clone();
             let window = window.clone();
             let app = app.clone();
-            move |_| open_in_editor(&window, &app, &path)
+            move |_, _| open_in_editor(&window, &app, &path)
         });
         info.connect_clicked({
             let name = recent.name.clone();
@@ -309,8 +356,6 @@ fn refresh_recents(
                 refresh_recents(&area, &search, &window, &app);
             }
         });
-        let card = adw::PreferencesGroup::new();
-        card.add(&row);
         area.append(&card);
     }
 }

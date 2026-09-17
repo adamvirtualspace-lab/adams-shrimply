@@ -407,7 +407,7 @@ define_class!(
                     return;
                 }
             };
-            recent_projects::touch(&path, &request.name)
+            recent_projects::touch(&path, &request.name, &[])
                 .unwrap_or_else(|error| panic!("could not update recent projects: {error}"));
             self.refresh_current_search();
             self.open_in_editor(&path);

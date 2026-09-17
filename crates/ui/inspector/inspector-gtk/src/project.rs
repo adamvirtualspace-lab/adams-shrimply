@@ -30,6 +30,10 @@ impl Inspectable for Project {
             .on_commit(move |_| name_commit_controller.finish_live_edit())
             .build();
         config.add_control_row("Name", &name);
+        config.add_wide_control(&super::project_tags::control(
+            project.tags,
+            context.inspector_core.clone(),
+        ));
 
         let initial_fps = project.frame_rate;
         let initial_width = project.canvas_size.width;

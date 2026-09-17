@@ -326,7 +326,7 @@ fn write_packets(
 mod tests {
     use super::*;
     use shrimply_project_document::project::{
-        AudioItem, AudioTrack, PROJECT_FORMAT_VERSION, Project, RepeatStrategy, Time,
+        AudioItem, AudioTrack, Project, RepeatStrategy, Time,
     };
 
     #[test]
@@ -362,12 +362,7 @@ mod tests {
             .build();
         let second_item = item.clone();
         let project = Project {
-            format_version: PROJECT_FORMAT_VERSION,
             name: "Audio export test".to_string(),
-            fps: shrimply_project_document::project::DEFAULT_PROJECT_FPS,
-            canvas_size: shrimply_project_document::project::DEFAULT_CANVAS_SIZE,
-            caption_tracks: Vec::new(),
-            video_tracks: Vec::new(),
             audio_tracks: vec![
                 AudioTrack {
                     items: vec![item],
@@ -378,11 +373,7 @@ mod tests {
                     ..Default::default()
                 },
             ],
-            folded_sequences: Vec::new(),
-            expanded_sequence_paths: Vec::new(),
-            cursor_position: None,
-            timeline_zoom: None,
-            preview_guides: Default::default(),
+            ..Default::default()
         };
         let mixed = streaming::mix_project_offline(&project, SAMPLE_RATE, |_, _| true).unwrap();
         assert!(mixed.iter().any(|sample| !(-1.0..=1.0).contains(sample)));

@@ -64,16 +64,12 @@ pub fn selected_audio_project(
         project: Project {
             format_version: project.format_version,
             name: project.name.clone(),
+            tags: project.tags.clone(),
             fps: project.fps,
             canvas_size: project.canvas_size,
-            caption_tracks: Vec::new(),
-            video_tracks: Vec::new(),
             audio_tracks,
             folded_sequences: project.folded_sequences.clone(),
-            expanded_sequence_paths: Vec::new(),
-            cursor_position: None,
-            timeline_zoom: None,
-            preview_guides: Default::default(),
+            ..Default::default()
         },
         start: start?,
         end: end?,

@@ -70,7 +70,7 @@ pub struct EditorSession {
     asset_changes: async_channel::Receiver<shrimply_asset::AssetChange>,
     pending_cursor: Rc<Cell<Option<project::Time>>>,
     commit_status: Rc<RefCell<project::CommitStatus>>,
-    project_name: RefCell<String>,
+    project_metadata: RefCell<(String, Vec<String>)>,
     title_dirty: Rc<Cell<bool>>,
 }
 
@@ -125,7 +125,10 @@ impl EditorSession {
             *current_commit_status.borrow_mut() = status;
             changed_title.set(true);
         });
-        let project_name = RefCell::new(project.borrow().name.clone());
+        let project_metadata = {
+            let project = project.borrow();
+            RefCell::new((project.name.clone(), project.tags.clone()))
+        };
         Ok(Self {
             project,
             player_state,
@@ -139,7 +142,7 @@ impl EditorSession {
             asset_changes: shrimply_asset::subscribe(),
             pending_cursor,
             commit_status,
-            project_name,
+            project_metadata,
             title_dirty,
         })
     }
@@ -180,15 +183,22 @@ impl EditorSession {
                 );
             }
         }
-        let name = self.project.borrow().name.clone();
-        if *self.project_name.borrow() != name {
-            if let Err(error) =
-                shrimply_recent_projects::touch(&project::active_project_path(), &name)
-            {
-                tracing::warn!(%error, "could not update recent projects");
+        {
+            let project = self.project.borrow();
+            let mut metadata = self.project_metadata.borrow_mut();
+            if metadata.0 != project.name || metadata.1 != project.tags {
+                if let Err(error) = shrimply_recent_projects::touch(
+                    &project::active_project_path(),
+                    &project.name,
+                    &project.tags,
+                ) {
+                    tracing::warn!(%error, "could not update recent projects");
+                }
+                if metadata.0 != project.name {
+                    self.title_dirty.set(true);
+                }
+                *metadata = (project.name.clone(), project.tags.clone());
             }
-            *self.project_name.borrow_mut() = name;
-            self.title_dirty.set(true);
         }
         if let Some(position) = self.pending_cursor.take() {
             let mut project = self.project.borrow_mut();
@@ -214,10 +224,11 @@ impl EditorSession {
     pub fn save_as(&self, path: PathBuf) -> Result<PathBuf, String> {
         let path = ProjectFormat::from_path(&path).normalize_path(path);
         project::save_as(&path)?;
-        let name = self.project.borrow().name.clone();
-        if let Err(error) = shrimply_recent_projects::touch(&path, &name) {
+        let project = self.project.borrow();
+        if let Err(error) = shrimply_recent_projects::touch(&path, &project.name, &project.tags) {
             tracing::warn!(%error, "could not update recent projects");
         }
+        drop(project);
         player_state::refresh_project(
             &self.player_state,
             player_state::ProjectChange {

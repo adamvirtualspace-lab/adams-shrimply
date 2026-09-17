@@ -33,6 +33,7 @@ mod lifecycle;
 mod ownership;
 mod paint;
 mod preview;
+mod tags;
 mod timing;
 pub use crate::caption::{
     CaptionEdgeStyle, CaptionFont, CaptionItem, CaptionWritingDirection, HorizontalAlign,
@@ -92,6 +93,7 @@ pub use shrimply_project_types::{
     DEFAULT_PROJECT_FPS, FrameRate, MAX_CANVAS_DIMENSION, MIN_CANVAS_DIMENSION, PROJECT_PRESETS,
     ProjectPreset, TransitionSide, clamp_item_end_to_next_start,
 };
+pub use tags::normalize_tags;
 pub use timing::*;
 
 pub const PROJECT_FORMAT_VERSION: u32 = 32;
@@ -116,6 +118,12 @@ pub struct Project {
     #[serde(default = "default_project_name")]
     pub name: String,
     #[serde(
+        default,
+        deserialize_with = "tags::deserialize_tags",
+        serialize_with = "tags::serialize_tags"
+    )]
+    pub tags: Vec<String>,
+    #[serde(
         default = "default_project_fps",
         deserialize_with = "deserialize_fraction",
         serialize_with = "serialize_fraction"
@@ -139,6 +147,26 @@ pub struct Project {
     pub timeline_zoom: Option<Time>,
     #[serde(default)]
     pub preview_guides: Box<PreviewGuides>,
+}
+
+impl Default for Project {
+    fn default() -> Self {
+        Self {
+            format_version: current_project_format_version(),
+            name: default_project_name(),
+            tags: Vec::new(),
+            fps: default_project_fps(),
+            canvas_size: default_canvas_size(),
+            caption_tracks: Vec::new(),
+            video_tracks: Vec::new(),
+            audio_tracks: Vec::new(),
+            folded_sequences: Vec::new(),
+            expanded_sequence_paths: Vec::new(),
+            cursor_position: None,
+            timeline_zoom: None,
+            preview_guides: Default::default(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]

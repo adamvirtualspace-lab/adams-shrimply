@@ -982,7 +982,9 @@ impl qobject::EditorBackend {
                 self.as_mut().request_lock(i64::from(pid));
             }
             LoadEvent::Ready { path, project } => {
-                if let Err(error) = shrimply_recent_projects::touch(&path, &project.name) {
+                if let Err(error) =
+                    shrimply_recent_projects::touch(&path, &project.name, &project.tags)
+                {
                     tracing::warn!(%error, "could not update recent projects");
                 }
                 ffmpeg_next::init().expect("FFmpeg should initialize");

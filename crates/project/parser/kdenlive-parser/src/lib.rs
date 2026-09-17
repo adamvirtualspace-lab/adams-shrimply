@@ -14,8 +14,8 @@ use shrimply_math_core::Fraction;
 use shrimply_project_document::{
     AudioGenerator, AudioItem, AudioSource, AudioSpeedMethod, AudioTrack, AudioWaveform,
     Background, BackgroundGenerator, CanvasSize, CaptionTrack, Color, FoldedSequence,
-    LayerVisibility, LayeredImageItem, PROJECT_FORMAT_VERSION, PreviewGuides, Project,
-    SequenceReference, SolidColor, Time, VideoItem, VideoItemContent, VisualTrack, WhiteNoise,
+    LayerVisibility, LayeredImageItem, Project, SequenceReference, SolidColor, Time, VideoItem,
+    VideoItemContent, VisualTrack, WhiteNoise,
 };
 use shrimply_property_model::timeline_value::{TimelineExpression, TimelineValue};
 use uuid::Uuid;
@@ -100,7 +100,6 @@ pub fn from_file(path: impl AsRef<Path>) -> Result<ImportResult, Box<dyn Error +
 
     main.caption_tracks = converter.caption_tracks(active)?;
     let project = Project {
-        format_version: PROJECT_FORMAT_VERSION,
         name: path
             .file_stem()
             .and_then(|name| name.to_str())
@@ -112,10 +111,7 @@ pub fn from_file(path: impl AsRef<Path>) -> Result<ImportResult, Box<dyn Error +
         video_tracks: main.video_tracks,
         audio_tracks: main.audio_tracks,
         folded_sequences,
-        expanded_sequence_paths: Vec::new(),
-        cursor_position: None,
-        timeline_zoom: None,
-        preview_guides: Box::<PreviewGuides>::default(),
+        ..Default::default()
     };
 
     Ok(ImportResult {

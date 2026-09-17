@@ -20,6 +20,7 @@ mod list;
 pub(crate) mod modifiers;
 mod paint;
 mod project;
+mod project_tags;
 mod rhai_editor;
 mod scene_3d;
 mod section;

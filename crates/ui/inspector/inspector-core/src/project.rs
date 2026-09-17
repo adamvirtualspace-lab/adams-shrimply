@@ -7,6 +7,7 @@ pub use shrimply_project_document::project::{MAX_CANVAS_DIMENSION, MIN_CANVAS_DI
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProjectPresentation {
     pub name: String,
+    pub tags: Vec<String>,
     pub canvas_size: CanvasSize,
     pub frame_rate: shrimply_math_core::Fraction,
     pub video_track_count: usize,
@@ -41,6 +42,7 @@ impl ProjectPresentation {
 pub fn presentation(project: &Project) -> ProjectPresentation {
     ProjectPresentation {
         name: project.name.clone(),
+        tags: project.tags.clone(),
         canvas_size: project.canvas_size,
         frame_rate: project.fps,
         video_track_count: project.video_tracks.len(),

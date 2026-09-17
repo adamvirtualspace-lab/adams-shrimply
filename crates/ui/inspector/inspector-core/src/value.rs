@@ -42,6 +42,21 @@ impl InspectorController {
         );
     }
 
+    pub fn set_project_tags(&self, tags: &[String]) {
+        let tags = shrimply_project_document::project::normalize_tags(tags);
+        let mut project = self.project.borrow_mut();
+        if project.tags == tags {
+            return;
+        }
+        project.tags = tags;
+        shrimply_project_document::project::commit_edit(&project, "project-tags");
+        drop(project);
+        shrimply_editor_state::player_state::refresh_project(
+            &self.player_state,
+            shrimply_editor_state::player_state::ProjectChange::default(),
+        );
+    }
+
     pub fn set_value(
         &self,
         target: &InspectorTarget,

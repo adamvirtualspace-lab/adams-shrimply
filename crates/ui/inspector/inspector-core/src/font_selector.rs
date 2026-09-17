@@ -511,18 +511,11 @@ mod tests {
         track.items.push(text_item);
 
         let project = Project {
-            format_version: shrimply_project_document::project::PROJECT_FORMAT_VERSION,
             name: "Test Project".to_string(),
             fps: Fraction::from(30),
             canvas_size,
-            caption_tracks: Vec::new(),
             video_tracks: vec![track],
-            audio_tracks: Vec::new(),
-            folded_sequences: Vec::new(),
-            expanded_sequence_paths: Vec::new(),
-            cursor_position: None,
-            timeline_zoom: None,
-            preview_guides: Default::default(),
+            ..Default::default()
         };
 
         let project_cell = Rc::new(RefCell::new(project));

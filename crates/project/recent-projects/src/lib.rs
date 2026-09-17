@@ -10,6 +10,8 @@ const LIMIT: usize = 50;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RecentProject {
     pub name: String,
+    #[serde(default)]
+    pub tags: Vec<String>,
     pub path: PathBuf,
     opened_at: u64,
 }
@@ -45,7 +47,7 @@ pub fn settings_db_path() -> PathBuf {
     shrimply_path_core::config_directory().join("settings.sqlite")
 }
 
-pub fn touch(path: &Path, name: &str) -> Result<(), String> {
+pub fn touch(path: &Path, name: &str, tags: &[String]) -> Result<(), String> {
     let conn = open()?;
     let mut projects = load_from(&conn)?;
     let path = absolute_path(path);
@@ -54,6 +56,7 @@ pub fn touch(path: &Path, name: &str) -> Result<(), String> {
         0,
         RecentProject {
             name: name.to_string(),
+            tags: tags.to_vec(),
             path,
             opened_at: SystemTime::now()
                 .duration_since(UNIX_EPOCH)

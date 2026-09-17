@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use shrimply_project_document::project::{
     AudioTrack, COMMON_FRAME_RATES, CaptionTrack, DEFAULT_CANVAS_SIZE, DEFAULT_PROJECT_FPS,
-    PROJECT_FORMAT_VERSION, Project, VisualTrack, fraction_new,
+    Project, VisualTrack, fraction_new,
 };
 
 use crate::bridge::{Bridge, BridgeError};
@@ -175,18 +175,13 @@ impl ShrimplyServer {
             }
         };
         let project = Project {
-            format_version: PROJECT_FORMAT_VERSION,
             name,
             fps,
             canvas_size: shrimply_project_document::project::CanvasSize { width, height },
             caption_tracks: vec![CaptionTrack::default()],
             video_tracks: vec![VisualTrack::default()],
             audio_tracks: vec![AudioTrack::default()],
-            folded_sequences: Vec::new(),
-            expanded_sequence_paths: Vec::new(),
-            cursor_position: None,
-            timeline_zoom: None,
-            preview_guides: Default::default(),
+            ..Default::default()
         };
         let worker_path = project_path.clone();
         let canceled = Arc::new(AtomicBool::new(false));

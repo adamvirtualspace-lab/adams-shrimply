@@ -124,6 +124,10 @@ pub fn load_recent_projects(query: &str) -> Result<Vec<RecentProject>, String> {
             query.is_empty()
                 || project.name.to_lowercase().contains(&query)
                 || project
+                    .tags
+                    .iter()
+                    .any(|tag| tag.to_lowercase().contains(&query))
+                || project
                     .path
                     .to_string_lossy()
                     .to_lowercase()
@@ -158,18 +162,13 @@ pub fn create_project(
         path.set_extension("shrimp");
     }
     let project = project::Project {
-        format_version: project::PROJECT_FORMAT_VERSION,
         name: name.to_string(),
         fps,
         canvas_size,
         caption_tracks: vec![project::CaptionTrack::default()],
         video_tracks: vec![project::VisualTrack::default()],
         audio_tracks: vec![project::AudioTrack::default()],
-        folded_sequences: Vec::new(),
-        expanded_sequence_paths: Vec::new(),
-        cursor_position: None,
-        timeline_zoom: None,
-        preview_guides: Default::default(),
+        ..Default::default()
     };
     project::create_project_file(&path, &project)?;
     Ok(path)
