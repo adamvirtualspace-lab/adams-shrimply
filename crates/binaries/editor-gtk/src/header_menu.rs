@@ -23,6 +23,7 @@ pub(crate) fn add(
     project_menu.append_i18n("New Project", "win.new-project");
     project_menu.append_i18n("Open Project…", "win.open-project");
     let track_menu = gio::Menu::new();
+    track_menu.append_i18n("Comment Track", "win.new-comment-track");
     track_menu.append_i18n("Caption Track", "win.new-caption-track");
     track_menu.append_i18n("Video Track", "win.new-video-track");
     track_menu.append_i18n("Audio Track", "win.new-audio-track");
@@ -58,6 +59,7 @@ pub(crate) fn add(
         move || show_open_project_dialog(&window)
     });
     for (name, kind) in [
+        ("new-comment-track", NewTrackKind::Comment),
         ("new-caption-track", NewTrackKind::Caption),
         ("new-video-track", NewTrackKind::Video),
         ("new-audio-track", NewTrackKind::Audio),
@@ -325,6 +327,7 @@ fn show_about_dialog(window: &adw::ApplicationWindow) {
 
 #[derive(Clone, Copy)]
 enum NewTrackKind {
+    Comment,
     Caption,
     Video,
     Audio,
@@ -338,6 +341,7 @@ fn add_track(
     {
         let mut project = project.borrow_mut();
         match kind {
+            NewTrackKind::Comment => project.comment_tracks.push(Default::default()),
             NewTrackKind::Caption => project.caption_tracks.push(Default::default()),
             NewTrackKind::Video => project.video_tracks.push(Default::default()),
             NewTrackKind::Audio => project.audio_tracks.push(Default::default()),

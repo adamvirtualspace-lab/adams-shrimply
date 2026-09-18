@@ -2,12 +2,14 @@ use shrimply_math_core::Fraction;
 use uuid::Uuid;
 
 use super::{
-    AudioItem, AudioSource, AudioTrack, CaptionItem, CaptionTrack, Project, Time, VideoItem,
-    VideoItemContent, VisualTrack, playback_speed_is_zero, scaled_time_delta, unscaled_time_delta,
+    AudioItem, AudioSource, AudioTrack, CaptionItem, CaptionTrack, CommentItem, CommentTrack,
+    Project, Time, VideoItem, VideoItemContent, VisualTrack, playback_speed_is_zero,
+    scaled_time_delta, unscaled_time_delta,
 };
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum ItemKind {
+    Comment,
     Caption,
     Video,
     Audio,
@@ -52,6 +54,9 @@ impl SequenceScopeId {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum TrackAddress {
+    Comment {
+        track_id: Uuid,
+    },
     Caption {
         track_id: Uuid,
     },
@@ -67,6 +72,10 @@ pub enum TrackAddress {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum ItemAddress {
+    Comment {
+        track_id: Uuid,
+        item_id: Uuid,
+    },
     Caption {
         track_id: Uuid,
         item_id: Uuid,
@@ -84,24 +93,28 @@ pub enum ItemAddress {
 }
 
 pub enum TrackRef<'a> {
+    Comment(&'a CommentTrack),
     Caption(&'a CaptionTrack),
     Video(&'a VisualTrack),
     Audio(&'a AudioTrack),
 }
 
 pub enum TrackMut<'a> {
+    Comment(&'a mut CommentTrack),
     Caption(&'a mut CaptionTrack),
     Video(&'a mut VisualTrack),
     Audio(&'a mut AudioTrack),
 }
 
 pub enum ItemRef<'a> {
+    Comment(&'a CommentItem),
     Caption(&'a CaptionItem),
     Video(&'a VideoItem),
     Audio(&'a AudioItem),
 }
 
 pub enum ItemMut<'a> {
+    Comment(&'a mut CommentItem),
     Caption(&'a mut CaptionItem),
     Video(&'a mut VideoItem),
     Audio(&'a mut AudioItem),
@@ -109,6 +122,7 @@ pub enum ItemMut<'a> {
 
 #[derive(Clone, Debug)]
 pub enum ProjectItem {
+    Comment(CommentItem),
     Caption(CaptionItem),
     Video(Box<VideoItem>),
     Audio(Box<AudioItem>),
@@ -117,6 +131,7 @@ pub enum ProjectItem {
 impl TrackAddress {
     pub fn kind(&self) -> ItemKind {
         match self {
+            Self::Comment { .. } => ItemKind::Comment,
             Self::Caption { .. } => ItemKind::Caption,
             Self::Video { .. } => ItemKind::Video,
             Self::Audio { .. } => ItemKind::Audio,
@@ -125,6 +140,7 @@ impl TrackAddress {
 
     pub fn sequence_path(&self) -> &[Uuid] {
         match self {
+            Self::Comment { .. } => &[],
             Self::Caption { .. } => &[],
             Self::Video { sequence_path, .. } | Self::Audio { sequence_path, .. } => sequence_path,
         }
@@ -132,7 +148,8 @@ impl TrackAddress {
 
     pub fn track_id(&self) -> Uuid {
         match self {
-            Self::Caption { track_id }
+            Self::Comment { track_id }
+            | Self::Caption { track_id }
             | Self::Video { track_id, .. }
             | Self::Audio { track_id, .. } => *track_id,
         }
@@ -144,6 +161,10 @@ impl TrackAddress {
 
     pub fn item(&self, item_id: Uuid) -> ItemAddress {
         match self {
+            Self::Comment { track_id } => ItemAddress::Comment {
+                track_id: *track_id,
+                item_id,
+            },
             Self::Caption { track_id } => ItemAddress::Caption {
                 track_id: *track_id,
                 item_id,
@@ -171,6 +192,7 @@ impl TrackAddress {
 impl ItemAddress {
     pub fn kind(&self) -> ItemKind {
         match self {
+            Self::Comment { .. } => ItemKind::Comment,
             Self::Caption { .. } => ItemKind::Caption,
             Self::Video { .. } => ItemKind::Video,
             Self::Audio { .. } => ItemKind::Audio,
@@ -179,6 +201,9 @@ impl ItemAddress {
 
     pub fn track(&self) -> TrackAddress {
         match self {
+            Self::Comment { track_id, .. } => TrackAddress::Comment {
+                track_id: *track_id,
+            },
             Self::Caption { track_id, .. } => TrackAddress::Caption {
                 track_id: *track_id,
             },
@@ -203,6 +228,7 @@ impl ItemAddress {
 
     pub fn sequence_path(&self) -> &[Uuid] {
         match self {
+            Self::Comment { .. } => &[],
             Self::Caption { .. } => &[],
             Self::Video { sequence_path, .. } | Self::Audio { sequence_path, .. } => sequence_path,
         }
@@ -210,7 +236,8 @@ impl ItemAddress {
 
     pub fn track_id(&self) -> Uuid {
         match self {
-            Self::Caption { track_id, .. }
+            Self::Comment { track_id, .. }
+            | Self::Caption { track_id, .. }
             | Self::Video { track_id, .. }
             | Self::Audio { track_id, .. } => *track_id,
         }
@@ -218,7 +245,8 @@ impl ItemAddress {
 
     pub fn item_id(&self) -> Uuid {
         match self {
-            Self::Caption { item_id, .. }
+            Self::Comment { item_id, .. }
+            | Self::Caption { item_id, .. }
             | Self::Video { item_id, .. }
             | Self::Audio { item_id, .. } => *item_id,
         }
@@ -232,6 +260,7 @@ impl ItemAddress {
 impl<'a> ItemRef<'a> {
     pub fn kind(&self) -> ItemKind {
         match self {
+            Self::Comment(_) => ItemKind::Comment,
             Self::Caption(_) => ItemKind::Caption,
             Self::Video(_) => ItemKind::Video,
             Self::Audio(_) => ItemKind::Audio,
@@ -240,6 +269,7 @@ impl<'a> ItemRef<'a> {
 
     pub fn id(&self) -> Uuid {
         match self {
+            Self::Comment(item) => item.id,
             Self::Caption(item) => item.id,
             Self::Video(item) => item.id,
             Self::Audio(item) => item.id,
@@ -248,6 +278,7 @@ impl<'a> ItemRef<'a> {
 
     pub fn times(&self) -> (Time, Time) {
         match self {
+            Self::Comment(item) => (item.start, item.end),
             Self::Caption(item) => (item.start, item.end),
             Self::Video(item) => (item.start, item.end),
             Self::Audio(item) => (item.start, item.end),
@@ -258,6 +289,7 @@ impl<'a> ItemRef<'a> {
 impl ProjectItem {
     pub fn kind(&self) -> ItemKind {
         match self {
+            Self::Comment(_) => ItemKind::Comment,
             Self::Caption(_) => ItemKind::Caption,
             Self::Video(_) => ItemKind::Video,
             Self::Audio(_) => ItemKind::Audio,
@@ -266,6 +298,7 @@ impl ProjectItem {
 
     pub fn id(&self) -> Uuid {
         match self {
+            Self::Comment(item) => item.id,
             Self::Caption(item) => item.id,
             Self::Video(item) => item.id,
             Self::Audio(item) => item.id,
@@ -274,6 +307,7 @@ impl ProjectItem {
 
     pub fn times(&self) -> (Time, Time) {
         match self {
+            Self::Comment(item) => (item.start, item.end),
             Self::Caption(item) => (item.start, item.end),
             Self::Video(item) => (item.start, item.end),
             Self::Audio(item) => (item.start, item.end),
@@ -283,6 +317,10 @@ impl ProjectItem {
     pub fn set_times(&mut self, start: Time, end: Time) {
         let (start, end) = (start.min(end), start.max(end));
         match self {
+            Self::Comment(item) => {
+                item.start = start;
+                item.end = end;
+            }
             Self::Caption(item) => {
                 item.start = start;
                 item.end = end;
@@ -315,6 +353,7 @@ impl Project {
     ) -> Option<SequenceScopeId> {
         let mut instance_ids = Vec::with_capacity(sequence_path.len());
         match kind {
+            ItemKind::Comment => return sequence_path.is_empty().then(SequenceScopeId::root),
             ItemKind::Caption => return sequence_path.is_empty().then(SequenceScopeId::root),
             ItemKind::Video => {
                 let mut tracks = self.video_tracks.as_slice();
@@ -357,6 +396,7 @@ impl Project {
         scope: &SequenceScopeId,
     ) -> Vec<Vec<Uuid>> {
         match kind {
+            ItemKind::Comment => scope.is_root().then(Vec::new).into_iter().collect(),
             ItemKind::Caption => scope.is_root().then(Vec::new).into_iter().collect(),
             ItemKind::Video => self.video_paths_for_scope(scope),
             ItemKind::Audio => self.audio_paths_for_scope(scope),
@@ -488,6 +528,11 @@ impl Project {
 
     pub fn track(&self, address: &TrackAddress) -> Option<TrackRef<'_>> {
         match address {
+            TrackAddress::Comment { track_id } => self
+                .comment_tracks
+                .iter()
+                .find(|track| track.id == *track_id)
+                .map(TrackRef::Comment),
             TrackAddress::Caption { track_id } => self
                 .caption_tracks
                 .iter()
@@ -514,6 +559,11 @@ impl Project {
 
     pub fn track_mut(&mut self, address: &TrackAddress) -> Option<TrackMut<'_>> {
         match address {
+            TrackAddress::Comment { track_id } => self
+                .comment_tracks
+                .iter_mut()
+                .find(|track| track.id == *track_id)
+                .map(TrackMut::Comment),
             TrackAddress::Caption { track_id } => self
                 .caption_tracks
                 .iter_mut()
@@ -552,6 +602,11 @@ impl Project {
 
     pub fn item(&self, address: &ItemAddress) -> Option<ItemRef<'_>> {
         match self.track(&address.track())? {
+            TrackRef::Comment(track) => track
+                .items
+                .iter()
+                .find(|item| item.id == address.item_id())
+                .map(ItemRef::Comment),
             TrackRef::Caption(track) => track
                 .items
                 .iter()
@@ -573,6 +628,11 @@ impl Project {
     pub fn item_mut(&mut self, address: &ItemAddress) -> Option<ItemMut<'_>> {
         let item_id = address.item_id();
         match self.track_mut(&address.track())? {
+            TrackMut::Comment(track) => track
+                .items
+                .iter_mut()
+                .find(|item| item.id == item_id)
+                .map(ItemMut::Comment),
             TrackMut::Caption(track) => track
                 .items
                 .iter_mut()
@@ -591,8 +651,25 @@ impl Project {
         }
     }
 
+    pub fn comment_item(&self, address: &ItemAddress) -> Option<&CommentItem> {
+        match self.item(address)? {
+            ItemRef::Caption(_) => None,
+            ItemRef::Comment(item) => Some(item),
+            ItemRef::Video(_) | ItemRef::Audio(_) => None,
+        }
+    }
+
+    pub fn comment_item_mut(&mut self, address: &ItemAddress) -> Option<&mut CommentItem> {
+        match self.item_mut(address)? {
+            ItemMut::Caption(_) => None,
+            ItemMut::Comment(item) => Some(item),
+            ItemMut::Video(_) | ItemMut::Audio(_) => None,
+        }
+    }
+
     pub fn caption_item(&self, address: &ItemAddress) -> Option<&CaptionItem> {
         match self.item(address)? {
+            ItemRef::Comment(_) => None,
             ItemRef::Caption(item) => Some(item),
             ItemRef::Video(_) | ItemRef::Audio(_) => None,
         }
@@ -600,6 +677,7 @@ impl Project {
 
     pub fn caption_item_mut(&mut self, address: &ItemAddress) -> Option<&mut CaptionItem> {
         match self.item_mut(address)? {
+            ItemMut::Comment(_) => None,
             ItemMut::Caption(item) => Some(item),
             ItemMut::Video(_) | ItemMut::Audio(_) => None,
         }
@@ -608,34 +686,39 @@ impl Project {
     pub fn video_item(&self, address: &ItemAddress) -> Option<&VideoItem> {
         match self.item(address)? {
             ItemRef::Video(item) => Some(item),
-            ItemRef::Caption(_) | ItemRef::Audio(_) => None,
+            ItemRef::Comment(_) | ItemRef::Caption(_) | ItemRef::Audio(_) => None,
         }
     }
 
     pub fn video_item_mut(&mut self, address: &ItemAddress) -> Option<&mut VideoItem> {
         match self.item_mut(address)? {
             ItemMut::Video(item) => Some(item),
-            ItemMut::Caption(_) | ItemMut::Audio(_) => None,
+            ItemMut::Comment(_) | ItemMut::Caption(_) | ItemMut::Audio(_) => None,
         }
     }
 
     pub fn audio_item(&self, address: &ItemAddress) -> Option<&AudioItem> {
         match self.item(address)? {
             ItemRef::Audio(item) => Some(item),
-            ItemRef::Caption(_) | ItemRef::Video(_) => None,
+            ItemRef::Comment(_) | ItemRef::Caption(_) | ItemRef::Video(_) => None,
         }
     }
 
     pub fn audio_item_mut(&mut self, address: &ItemAddress) -> Option<&mut AudioItem> {
         match self.item_mut(address)? {
             ItemMut::Audio(item) => Some(item),
-            ItemMut::Caption(_) | ItemMut::Video(_) => None,
+            ItemMut::Comment(_) | ItemMut::Caption(_) | ItemMut::Video(_) => None,
         }
     }
 
     pub fn take_item(&mut self, address: &ItemAddress) -> Option<ProjectItem> {
         let item_id = address.item_id();
         match self.track_mut(&address.track())? {
+            TrackMut::Comment(track) => track
+                .items
+                .iter()
+                .position(|item| item.id == item_id)
+                .map(|index| ProjectItem::Comment(track.items.remove(index))),
             TrackMut::Caption(track) => track
                 .items
                 .iter()
@@ -704,6 +787,7 @@ impl Project {
                 AudioSource::FoldedSequence(reference) => Some(*reference),
                 AudioSource::Media | AudioSource::Tts(_) | AudioSource::Generator(_) => None,
             },
+            Some(ItemRef::Comment(_)) => None,
             Some(ItemRef::Caption(_)) => None,
             None => return false,
         };
@@ -711,6 +795,7 @@ impl Project {
             return true;
         };
         let destination = match source.kind() {
+            ItemKind::Comment => Some(None),
             ItemKind::Caption => Some(None),
             ItemKind::Video => self.video_sequence_for_path(sequence_path),
             ItemKind::Audio => self.audio_sequence_for_path(sequence_path),
@@ -724,6 +809,16 @@ impl Project {
         let item_id = item.id();
         let sequence_path = track.sequence_path().to_vec();
         match (self.track_mut(track)?, item) {
+            (TrackMut::Comment(track), ProjectItem::Comment(item)) => {
+                let index = track
+                    .items
+                    .partition_point(|candidate| candidate.start <= item.start);
+                track.items.insert(index, item);
+                Some(ItemAddress::Comment {
+                    track_id: track.id,
+                    item_id,
+                })
+            }
             (TrackMut::Caption(track), ProjectItem::Caption(item)) => {
                 let index = track
                     .items
@@ -775,6 +870,18 @@ impl Project {
         top: bool,
     ) -> Option<ItemAddress> {
         match item {
+            ProjectItem::Comment(item) if sequence_path.is_empty() => {
+                let track = CommentTrack {
+                    items: vec![item],
+                    ..Default::default()
+                };
+                let address = ItemAddress::Comment {
+                    track_id: track.id,
+                    item_id: track.items[0].id,
+                };
+                self.comment_tracks.push(track);
+                Some(address)
+            }
             ProjectItem::Caption(item) if sequence_path.is_empty() => {
                 let track = CaptionTrack {
                     items: vec![item],
@@ -827,6 +934,7 @@ impl Project {
                 }
                 Some(address)
             }
+            ProjectItem::Comment(_) => None,
             ProjectItem::Caption(_) => None,
         }
     }
@@ -867,6 +975,10 @@ impl Project {
             return false;
         };
         !match target {
+            TrackRef::Comment(track) => track
+                .items
+                .iter()
+                .any(|item| item.id != source_id && item.start < end && item.end > start),
             TrackRef::Caption(track) => track
                 .items
                 .iter()
@@ -895,6 +1007,7 @@ impl Project {
             return None;
         }
         let valid_target = match source.kind() {
+            ItemKind::Comment => sequence_path.is_empty(),
             ItemKind::Caption => sequence_path.is_empty(),
             ItemKind::Video => self.video_sequence_for_path(sequence_path).is_some(),
             ItemKind::Audio => self.audio_sequence_for_path(sequence_path).is_some(),
@@ -925,6 +1038,7 @@ impl Project {
             return None;
         }
         match source.kind() {
+            ItemKind::Comment if !sequence_path.is_empty() => return None,
             ItemKind::Caption if !sequence_path.is_empty() => return None,
             ItemKind::Video if self.video_sequence_for_path(sequence_path).is_none() => {
                 return None;
@@ -932,7 +1046,7 @@ impl Project {
             ItemKind::Audio if self.audio_sequence_for_path(sequence_path).is_none() => {
                 return None;
             }
-            ItemKind::Caption | ItemKind::Video | ItemKind::Audio => {}
+            ItemKind::Comment | ItemKind::Caption | ItemKind::Video | ItemKind::Audio => {}
         }
         let mut item = self.take_item(source)?;
         item.set_times(start, end);
@@ -944,6 +1058,11 @@ impl Project {
 
     pub fn remove_track(&mut self, address: &TrackAddress) -> bool {
         match address {
+            TrackAddress::Comment { track_id } => {
+                let old_len = self.comment_tracks.len();
+                self.comment_tracks.retain(|track| track.id != *track_id);
+                self.comment_tracks.len() != old_len
+            }
             TrackAddress::Caption { track_id } => {
                 let old_len = self.caption_tracks.len();
                 self.caption_tracks.retain(|track| track.id != *track_id);
@@ -1152,6 +1271,7 @@ impl Project {
         sequence_path: &[Uuid],
     ) -> Option<Vec<SequenceHostTime>> {
         match kind {
+            ItemKind::Comment => sequence_path.is_empty().then(Vec::new),
             ItemKind::Caption => sequence_path.is_empty().then(Vec::new),
             ItemKind::Video => {
                 let mut tracks = self.video_tracks.as_slice();

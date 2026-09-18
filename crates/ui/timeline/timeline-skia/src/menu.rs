@@ -18,6 +18,7 @@ pub enum ContextMenuAction {
     Transcribe,
     RemoveSilences,
     GenerateSpeech,
+    AddCommentTrack,
     AddCaptionTrack,
     AddVideoTrack,
     AddAudioTrack,
@@ -70,6 +71,7 @@ impl ContextMenuAction {
             Self::Transcribe => "transcribe",
             Self::RemoveSilences => "remove-silences",
             Self::GenerateSpeech => "generate-speech",
+            Self::AddCommentTrack => "add-comment-track",
             Self::AddCaptionTrack => "add-caption-track",
             Self::AddVideoTrack => "add-video-track",
             Self::AddAudioTrack => "add-audio-track",
@@ -100,6 +102,7 @@ impl ContextMenuAction {
             Self::Transcribe => "Transcribe",
             Self::RemoveSilences => "Remove Silences",
             Self::GenerateSpeech => "Generate Speech",
+            Self::AddCommentTrack => "Add Comment Track",
             Self::AddCaptionTrack => "Add Caption Track",
             Self::AddVideoTrack => "Add Video Track",
             Self::AddAudioTrack => "Add Audio Track",
@@ -212,6 +215,7 @@ impl ContextMenu {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ContextItemKind {
+    Comment,
     Caption,
     Video,
     Audio,
@@ -276,7 +280,8 @@ pub fn item_context_menu(context: ItemMenuContext) -> ContextMenu {
     if let Some(control) = context.playback_speed {
         sections.push(vec![ContextMenuEntry::Control(control)]);
     }
-    sections.push(match context.kind {
+    let item_actions = match context.kind {
+        ContextItemKind::Comment => Vec::new(),
         ContextItemKind::Caption => {
             actions(&[ContextMenuItem::new(ContextMenuAction::GenerateSpeech)])
         }
@@ -300,13 +305,17 @@ pub fn item_context_menu(context: ItemMenuContext) -> ContextMenu {
             }
             actions(&items)
         }
-    });
+    };
+    if !item_actions.is_empty() {
+        sections.push(item_actions);
+    }
     ContextMenu { sections }
 }
 
 pub fn empty_track_context_menu() -> ContextMenu {
     ContextMenu {
         sections: vec![actions(&[
+            ContextMenuItem::new(ContextMenuAction::AddCommentTrack),
             ContextMenuItem::new(ContextMenuAction::AddCaptionTrack),
             ContextMenuItem::new(ContextMenuAction::AddVideoTrack),
             ContextMenuItem::new(ContextMenuAction::AddAudioTrack),
@@ -316,6 +325,7 @@ pub fn empty_track_context_menu() -> ContextMenu {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TrackMenuContext {
+    Comment,
     Caption,
     Video,
     Audio {
@@ -326,6 +336,7 @@ pub enum TrackMenuContext {
 
 pub fn track_context_menu(context: TrackMenuContext) -> ContextMenu {
     let sections = match context {
+        TrackMenuContext::Comment => Vec::new(),
         TrackMenuContext::Caption => vec![actions(&[ContextMenuItem::new(
             ContextMenuAction::GenerateSpeech,
         )])],

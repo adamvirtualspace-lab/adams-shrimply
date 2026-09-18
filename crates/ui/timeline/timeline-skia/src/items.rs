@@ -2,9 +2,9 @@ use hashbrown::{HashMap, HashSet};
 
 pub use crate::DragCollisionMode;
 use crate::project::{
-    AudioItem, AudioSource, AudioTrack, CaptionItem, FoldedSequence, ItemAddress, ItemKind,
-    ItemMut, ItemRef, Project, ProjectItem, RepeatStrategy, SequenceReference, Time, Transform,
-    VideoItem, VideoItemContent, VisualTrack, default_playback_speed,
+    AudioItem, AudioSource, AudioTrack, CaptionItem, CommentItem, FoldedSequence, ItemAddress,
+    ItemKind, ItemMut, ItemRef, Project, ProjectItem, RepeatStrategy, SequenceReference, Time,
+    Transform, VideoItem, VideoItemContent, VisualTrack, default_playback_speed,
     generated_item_natural_end_position, generated_item_natural_span,
     media_item_natural_end_position, media_natural_end_interval, media_real_span,
     scaled_time_delta, video_natural_end_interval,
@@ -60,9 +60,10 @@ pub fn track_at_y(project: &Project, y: f64) -> Option<(TrackKind, usize, usize)
 
 pub fn item_key_sort_key(key: &ItemKey) -> (u8, usize, usize) {
     let kind = match key.kind {
-        TrackKind::Caption => 0_u8,
-        TrackKind::Video => 1_u8,
-        TrackKind::Audio => 2_u8,
+        TrackKind::Comment => 0_u8,
+        TrackKind::Caption => 1_u8,
+        TrackKind::Video => 2_u8,
+        TrackKind::Audio => 3_u8,
     };
     (kind, key.track_index, key.item_index)
 }
@@ -75,6 +76,12 @@ pub struct ItemIdentity {
 
 pub fn item_identity(project: &Project, key: ItemKey) -> Option<ItemIdentity> {
     let id = match key.kind {
+        TrackKind::Comment => project
+            .comment_tracks
+            .get(key.track_index)?
+            .items
+            .get(key.item_index)
+            .map(|item| item.id),
         TrackKind::Caption => project
             .caption_tracks
             .get(key.track_index)?
@@ -99,6 +106,23 @@ pub fn item_identity(project: &Project, key: ItemKey) -> Option<ItemIdentity> {
 
 pub fn item_key_for_identity(project: &Project, identity: ItemIdentity) -> Option<ItemKey> {
     match identity.kind {
+        TrackKind::Comment => {
+            project
+                .comment_tracks
+                .iter()
+                .enumerate()
+                .find_map(|(track_index, track)| {
+                    track
+                        .items
+                        .iter()
+                        .position(|item| item.id == identity.id)
+                        .map(|item_index| ItemKey {
+                            kind: identity.kind,
+                            track_index,
+                            item_index,
+                        })
+                })
+        }
         TrackKind::Caption => {
             project
                 .caption_tracks
@@ -174,6 +198,7 @@ pub fn track_gap_at(
     }
 
     let (start, end) = match track.kind {
+        TrackKind::Comment => in_items(&project.comment_tracks.get(track.track_index)?.items, time),
         TrackKind::Caption => in_items(&project.caption_tracks.get(track.track_index)?.items, time),
         TrackKind::Video => in_items(&project.video_tracks.get(track.track_index)?.items, time),
         TrackKind::Audio => in_items(&project.audio_tracks.get(track.track_index)?.items, time),

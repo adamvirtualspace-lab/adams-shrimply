@@ -741,6 +741,9 @@ pub fn apply_media_to_tracks(
             Err("visual files cannot be imported to audio tracks".to_string())
         }
         TrackKind::Audio => apply_audio_to_tracks(project, info, track_indices, start, end),
+        TrackKind::Comment => {
+            Err("visual and media files cannot be imported to comment tracks".to_string())
+        }
         TrackKind::Caption => {
             Err("visual and media files cannot be imported to caption tracks".to_string())
         }

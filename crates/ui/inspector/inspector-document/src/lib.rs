@@ -156,6 +156,22 @@ pub fn basic(snapshot: InspectorSnapshot) -> InspectorDocument {
                 ],
             }]
         }
+        InspectorTarget::Item(ItemAddress::Comment { .. }) => vec![InspectorCategory {
+            key: "comment",
+            label: "Comment",
+            icon: CategoryIcon::Text,
+            items: vec![
+                InspectorItem::new(
+                    "comment",
+                    "Comment",
+                    shrimply_inspector_core::comment::section(
+                        &serde_json::from_value(snapshot.value.clone())
+                            .expect("comment must be valid"),
+                    ),
+                )
+                .boxed(),
+            ],
+        }],
         InspectorTarget::Item(ItemAddress::Caption { .. }) => {
             caption::categories(&snapshot.value, &snapshot.details)
         }

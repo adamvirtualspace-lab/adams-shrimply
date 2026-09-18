@@ -212,22 +212,26 @@ impl Scene {
                 }
                 "toggle-beat-detection"
             }
-            A::AddCaptionTrack | A::AddVideoTrack | A::AddAudioTrack => {
+            A::AddCommentTrack | A::AddCaptionTrack | A::AddVideoTrack | A::AddAudioTrack => {
                 let kind = match action {
+                    A::AddCommentTrack => TrackKind::Comment,
                     A::AddCaptionTrack => TrackKind::Caption,
                     A::AddVideoTrack => TrackKind::Video,
                     _ => TrackKind::Audio,
                 };
                 let count = match kind {
+                    TrackKind::Comment => edited.comment_tracks.len(),
                     TrackKind::Caption => edited.caption_tracks.len(),
                     TrackKind::Video => edited.video_tracks.len(),
                     TrackKind::Audio => edited.audio_tracks.len(),
                 };
                 let index = match (kind, self.context.at_top) {
-                    (TrackKind::Audio, true) | (TrackKind::Caption | TrackKind::Video, false) => 0,
+                    (TrackKind::Audio, true)
+                    | (TrackKind::Comment | TrackKind::Caption | TrackKind::Video, false) => 0,
                     _ => count,
                 };
                 match kind {
+                    TrackKind::Comment => edited.comment_tracks.insert(index, Default::default()),
                     TrackKind::Caption => edited.caption_tracks.insert(index, Default::default()),
                     TrackKind::Video => edited.video_tracks.insert(index, Default::default()),
                     TrackKind::Audio => edited.audio_tracks.insert(index, Default::default()),
@@ -275,6 +279,7 @@ impl Scene {
                         let index = if top { 0 } else { sequence.audio_tracks.len() };
                         sequence.audio_tracks.insert(index, Default::default());
                     }
+                    ItemKind::Comment => unreachable!(),
                     ItemKind::Caption => unreachable!(),
                 }
                 let path = folder

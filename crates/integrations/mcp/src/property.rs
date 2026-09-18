@@ -212,6 +212,7 @@ fn local_keyframe_times(
         .item(address)
         .ok_or_else(|| "clip was not found".to_string())?
     {
+        ItemRef::Comment(_) => return Err("comment clips do not support keyframes".to_string()),
         ItemRef::Caption(_) => return Err("caption clips do not support keyframes".to_string()),
         ItemRef::Video(item) => (item.start, item.end),
         ItemRef::Audio(item) => (item.start, item.end),
@@ -244,6 +245,7 @@ pub(crate) fn mutate_item(
         .item_mut(address)
         .ok_or_else(|| "clip was not found".to_string())?
     {
+        ItemMut::Comment(_) => Err("comment clips do not contain timeline properties".to_string()),
         ItemMut::Caption(_) => Err("caption clips do not contain timeline properties".to_string()),
         ItemMut::Video(item) => mutate_serialized(item, update),
         ItemMut::Audio(item) => mutate_serialized(item, update),

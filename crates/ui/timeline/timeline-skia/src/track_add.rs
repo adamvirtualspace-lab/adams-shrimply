@@ -66,6 +66,9 @@ pub fn activate_track_add_checked(
         project_state
             .track(&track_address)
             .map(|track| match track {
+                shrimply_project_document::project::TrackRef::Comment(track) => {
+                    track_span(track.items.iter().map(|item| (item.start, item.end)), start)
+                }
                 shrimply_project_document::project::TrackRef::Caption(track) => {
                     track_span(track.items.iter().map(|item| (item.start, item.end)), start)
                 }
@@ -94,6 +97,9 @@ pub fn activate_track_add_checked(
 
     let canvas_size = project_state.canvas_size;
     let item = match action {
+        TrackAddAction::Comment => {
+            ProjectItem::Comment(crate::project::CommentItem::new(start, end, String::new()))
+        }
         TrackAddAction::Text => {
             let mut item = VideoItem::text_item(canvas_size, start, end);
             if let VideoItemContent::Text(text) = &mut item.content {

@@ -97,9 +97,10 @@ pub(in crate::scene) use crate::track_controls::select_track;
 
 pub(in crate::scene) fn item_key_sort_key(key: &ItemKey) -> (u8, usize, usize) {
     let kind = match key.kind {
-        TrackKind::Caption => 0_u8,
-        TrackKind::Video => 1_u8,
-        TrackKind::Audio => 2_u8,
+        TrackKind::Comment => 0_u8,
+        TrackKind::Caption => 1_u8,
+        TrackKind::Video => 2_u8,
+        TrackKind::Audio => 3_u8,
     };
     (kind, key.track_index, key.item_index)
 }

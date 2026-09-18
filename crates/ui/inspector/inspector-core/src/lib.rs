@@ -6,6 +6,7 @@ pub mod background;
 pub mod benchmarking;
 pub mod camera_source;
 pub mod caption;
+pub mod comment;
 pub mod document;
 pub mod file_selection;
 pub mod font_cache;

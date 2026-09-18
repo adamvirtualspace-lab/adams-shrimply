@@ -245,7 +245,7 @@ pub(crate) fn handle_timeline_input(
                 player_state,
                 ProjectChange {
                     duration: Some(duration),
-                    captions: true,
+                    captions: key.kind == TrackKind::Caption,
                     ..Default::default()
                 },
             );
@@ -335,7 +335,7 @@ pub fn insert_caption_on_double_click(
         default_duration,
     )?;
     let duration = project_state.duration();
-    crate::project::commit_edit(&project_state, "create-caption-on-double-click");
+    crate::project::commit_edit(&project_state, "create-text-item-on-double-click");
     drop(project_state);
     Some((item_key, duration))
 }

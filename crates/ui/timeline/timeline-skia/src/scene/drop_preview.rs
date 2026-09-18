@@ -35,6 +35,17 @@ impl Scene {
             .saturating_add(self.default_visual_duration)
             .snapped(project.frame_step());
         match kind {
+            TrackKind::Comment => {
+                for item in &project.comment_tracks.get(track_index)?.items {
+                    if item.start <= start && start < item.end {
+                        return None;
+                    }
+                    if item.start > start {
+                        end = end.min(item.start);
+                        break;
+                    }
+                }
+            }
             TrackKind::Caption => {
                 for item in &project.caption_tracks.get(track_index)?.items {
                     if item.start <= start && start < item.end {

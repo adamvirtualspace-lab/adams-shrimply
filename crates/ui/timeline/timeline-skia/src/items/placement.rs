@@ -120,6 +120,7 @@ fn new_item_collides(
     end: Time,
 ) -> bool {
     match kind {
+        TrackKind::Comment => true,
         TrackKind::Caption => true,
         TrackKind::Video => project
             .video_tracks
@@ -271,6 +272,14 @@ fn collides_with_track(project: &Project, group: &DraggedGroup, placement: ItemP
     };
 
     match placement.key.kind {
+        TrackKind::Comment => {
+            project
+                .comment_tracks
+                .get(existing_track_index)
+                .is_none_or(|track| {
+                    collides_with_remaining(&track.items, group, placement, existing_track_index)
+                })
+        }
         TrackKind::Caption => {
             project
                 .caption_tracks
@@ -368,6 +377,17 @@ pub fn overwrite_indicators(
             continue;
         };
         match placement.key.kind {
+            TrackKind::Comment => {
+                if let Some(track) = project.comment_tracks.get(existing_track_index) {
+                    collect_overwrite_indicators(
+                        &track.items,
+                        group,
+                        *placement,
+                        existing_track_index,
+                        &mut indicators,
+                    );
+                }
+            }
             TrackKind::Caption => {
                 if let Some(track) = project.caption_tracks.get(existing_track_index) {
                     collect_overwrite_indicators(
@@ -457,7 +477,7 @@ pub fn add_collision_tracks(project: &Project, group: &mut DraggedGroup) {
         }
 
         let new_track_base = match kind {
-            TrackKind::Caption | TrackKind::Video => target_base
+            TrackKind::Comment | TrackKind::Caption | TrackKind::Video => target_base
                 .saturating_add(span)
                 .min(track_count(project, kind)),
             TrackKind::Audio => track_count(project, kind),

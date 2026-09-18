@@ -119,6 +119,17 @@ pub fn hit_item_at(project: &Project, view: TimelineViewState, x: f64, y: f64) -
     let time = Time::from_seconds_f64(x_to_time(x, view.scroll_seconds, view.seconds_per_pixel));
 
     match kind {
+        TrackKind::Comment => timeline_search::overlapping(
+            &project.comment_tracks.get(track_index)?.items,
+            time,
+            time,
+        )
+        .next()
+        .map(|(item_index, _)| ItemKey {
+            kind,
+            track_index,
+            item_index,
+        }),
         TrackKind::Caption => timeline_search::overlapping(
             &project.caption_tracks.get(track_index)?.items,
             time,
@@ -185,6 +196,14 @@ pub fn hit_resize_handle_at(
     }
 
     let items: Vec<_> = match kind {
+        TrackKind::Comment => project
+            .comment_tracks
+            .get(track_index)?
+            .items
+            .iter()
+            .enumerate()
+            .map(|(item_index, item)| (item_index, item.start, item.end))
+            .collect(),
         TrackKind::Caption => project
             .caption_tracks
             .get(track_index)?
@@ -420,6 +439,7 @@ pub fn hit_clip_transition_at(
                     .map(|value| (value.target_item_id, value.duration)),
             })
             .collect::<Vec<_>>(),
+        crate::project::TrackRef::Comment(_) => return None,
         crate::project::TrackRef::Caption(_) => return None,
     };
     let index = items.iter().position(|item| item.id == key.item_id())?;

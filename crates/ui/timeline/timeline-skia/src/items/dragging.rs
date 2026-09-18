@@ -232,7 +232,7 @@ pub fn item_natural_end_edges_at_address(project: &Project, address: &ItemAddres
                 item.repeat_strategy,
             ),
         ),
-        Some(ItemRef::Caption(_)) | None => {}
+        Some(ItemRef::Comment(_)) | Some(ItemRef::Caption(_)) | None => {}
     }
     let track = address.track();
     local
@@ -258,6 +258,7 @@ fn item_natural_span_at_address(project: &Project, address: &ItemAddress) -> Opt
             item.playback_speed,
             item.repeat_strategy,
         )?,
+        ItemRef::Comment(_) => return None,
         ItemRef::Caption(_) => return None,
     };
     let track = address.track();
@@ -424,6 +425,13 @@ pub fn move_dragged_group(project: &mut Project, group: &DraggedGroup) -> Option
 
     let mut selection = Vec::with_capacity(placements.len());
     let overwrite = group.collision_mode == DragCollisionMode::Overwrite;
+    move_comment_items(
+        project,
+        &placements,
+        &new_track_indices(group, TrackKind::Comment),
+        overwrite,
+        &mut selection,
+    )?;
     move_caption_items(
         project,
         &placements,
@@ -446,6 +454,53 @@ pub fn move_dragged_group(project: &mut Project, group: &DraggedGroup) -> Option
         &mut selection,
     )?;
     Some(selection)
+}
+
+pub fn move_comment_items(
+    project: &mut Project,
+    placements: &[ItemPlacement],
+    new_track_indices: &[usize],
+    overwrite: bool,
+    selection: &mut Vec<ItemKey>,
+) -> Option<()> {
+    let mut moved = Vec::new();
+    for placement in placements
+        .iter()
+        .copied()
+        .filter(|placement| placement.key.kind == TrackKind::Comment)
+    {
+        let item = project
+            .comment_tracks
+            .get(placement.key.track_index)?
+            .items
+            .get(placement.key.item_index)?
+            .clone();
+        moved.push((placement, item));
+    }
+
+    remove_comment_items(project, placements)?;
+    if overwrite {
+        overwrite_comment_items(project, placements, new_track_indices)?;
+    }
+    insert_new_tracks(&mut project.comment_tracks, new_track_indices)?;
+    for (placement, mut item) in moved {
+        item.start = placement.start;
+        item.end = placement.end;
+        let target_items = &mut project
+            .comment_tracks
+            .get_mut(placement.target_track_index)?
+            .items;
+        let item_index = insert_sorted(target_items, item);
+        push_moved_selection(
+            selection,
+            ItemKey {
+                kind: TrackKind::Comment,
+                track_index: placement.target_track_index,
+                item_index,
+            },
+        );
+    }
+    Some(())
 }
 
 pub fn move_caption_items(

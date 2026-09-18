@@ -7,6 +7,7 @@ mod background;
 mod benchmarking;
 mod camera_source;
 mod caption;
+mod comment;
 pub(crate) use shrimply_inspector_core::font_cache;
 pub(crate) mod font_selector;
 mod gaussian_3d;
@@ -445,6 +446,11 @@ fn resolve_target(
                     .unwrap_or_else(|| project_target(&project))
             }
             InspectorTarget::Item(address) => match project.item(address) {
+                Some(ItemRef::Comment(item)) => (
+                    Box::new(item.clone()) as Box<dyn Inspectable>,
+                    Some(address.clone()),
+                    None,
+                ),
                 Some(ItemRef::Caption(item)) => (
                     Box::new(item.clone()) as Box<dyn Inspectable>,
                     Some(address.clone()),

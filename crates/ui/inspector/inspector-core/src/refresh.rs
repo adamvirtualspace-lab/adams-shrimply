@@ -14,6 +14,12 @@ pub(crate) fn target_change(
         ..Default::default()
     };
     match target {
+        InspectorTarget::Item(ItemAddress::Comment { .. })
+        | InspectorTarget::Track(TrackAddress::Comment { .. }) => {}
+        InspectorTarget::Transition {
+            item: ItemAddress::Comment { .. },
+            ..
+        } => unreachable!("comments do not have transitions"),
         InspectorTarget::Project => {
             if inspector {
                 change.audio = true;

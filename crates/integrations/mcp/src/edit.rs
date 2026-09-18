@@ -252,6 +252,7 @@ pub fn apply_non_import(
                 .track(&address)
                 .ok_or_else(|| "track was not found".to_string())?
             {
+                TrackRef::Comment(track) => track.items.iter().map(|item| item.id).collect(),
                 TrackRef::Caption(track) => track.items.iter().map(|item| item.id).collect(),
                 TrackRef::Video(track) => track.items.iter().map(|item| item.id).collect(),
                 TrackRef::Audio(track) => track.items.iter().map(|item| item.id).collect(),
@@ -359,6 +360,7 @@ fn insert_captions(
                 .track(&target)
                 .expect("validated caption track must exist")
             {
+                TrackRef::Comment(_) => unreachable!("validated caption track must be a caption"),
                 TrackRef::Caption(track) => (track.enabled, track.language.clone()),
                 TrackRef::Video(_) | TrackRef::Audio(_) => unreachable!(),
             };
@@ -564,7 +566,7 @@ fn set_properties(
         has_playback,
     )?;
     if let Some(text) = &request.text {
-        edit::set_caption_text(project, &address, text.clone())?;
+        edit::set_item_text(project, &address, text.clone())?;
     }
     if let Some(enabled) = request.enabled {
         edit::set_audio_enabled(project, &address, enabled)?;
@@ -771,6 +773,9 @@ fn set_clip_transitions(
         .item_mut(&address)
         .ok_or_else(|| "clip was not found".to_string())?
     {
+        ItemMut::Comment(_) => {
+            return Err("comment clips do not support intro/outro transitions".to_string());
+        }
         ItemMut::Caption(_) => {
             return Err("caption clips do not support intro/outro transitions".to_string());
         }

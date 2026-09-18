@@ -327,6 +327,7 @@ fn group_change(group: &DraggedGroup, duration: Time, audio_waveforms: bool) -> 
 
 fn mark_change(change: &mut ProjectChange, kind: TrackKind, audio_waveforms: bool) {
     match kind {
+        TrackKind::Comment => {}
         TrackKind::Caption => change.captions = true,
         TrackKind::Video => change.video = true,
         TrackKind::Audio => {

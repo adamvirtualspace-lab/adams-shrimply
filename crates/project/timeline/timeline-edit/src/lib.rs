@@ -7,6 +7,7 @@ use shrimply_project_document::timeline_search::TimeSlice;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum TrackKind {
     Video,
+    Comment,
     Caption,
     Audio,
 }
@@ -15,6 +16,7 @@ impl TrackKind {
     pub fn label(self) -> &'static str {
         match self {
             Self::Video => "Video",
+            Self::Comment => "Comment",
             Self::Caption => "Caption",
             Self::Audio => "Audio",
         }
@@ -49,6 +51,12 @@ pub fn next_group_id(project: &Project) -> u64 {
         .chain(
             project
                 .audio_tracks
+                .iter()
+                .flat_map(|track| track.items.iter().filter_map(|item| item.group_id)),
+        )
+        .chain(
+            project
+                .comment_tracks
                 .iter()
                 .flat_map(|track| track.items.iter().filter_map(|item| item.group_id)),
         )

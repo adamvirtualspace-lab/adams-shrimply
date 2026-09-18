@@ -273,7 +273,7 @@ fn queue_project(project: &Project, action: &str) -> bool {
     if sender
         .send(HistoryJob::Update {
             step,
-            project: project.clone(),
+            project: Box::new(project.clone()),
         })
         .is_ok()
     {
@@ -291,7 +291,7 @@ fn queue_project(project: &Project, action: &str) -> bool {
 enum HistoryJob {
     Update {
         step: u64,
-        project: Project,
+        project: Box<Project>,
     },
     ViewState {
         cursor_position: Option<Time>,
@@ -381,7 +381,7 @@ fn start_history_worker(mut project: Project, mut path: PathBuf) -> SyncSender<H
                     step,
                     project: updated,
                 } => {
-                    project = updated;
+                    project = *updated;
                     pending_save = true;
                     pending_content = true;
                     last_update = Instant::now();

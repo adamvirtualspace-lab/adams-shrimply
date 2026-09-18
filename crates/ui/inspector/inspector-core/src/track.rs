@@ -20,6 +20,7 @@ impl TrackPresentation {
     pub fn title(&self) -> &'static str {
         match self.kind {
             ItemKind::Video => "Video Track",
+            ItemKind::Comment => "Comment Track",
             ItemKind::Caption => "Caption Track",
             ItemKind::Audio => "Audio Track",
         }
@@ -45,6 +46,7 @@ impl TrackPresentation {
 
 pub fn presentation(project: &Project, address: TrackAddress) -> Option<TrackPresentation> {
     let (enabled, language, item_count) = match project.track(&address)? {
+        TrackRef::Comment(track) => (track.enabled, None, track.items.len()),
         TrackRef::Caption(track) => (
             track.enabled,
             supported_caption_language(&track.language),
@@ -54,6 +56,10 @@ pub fn presentation(project: &Project, address: TrackAddress) -> Option<TrackPre
         TrackRef::Audio(track) => (track.enabled, None, track.items.len()),
     };
     let ordinal = match &address {
+        TrackAddress::Comment { track_id } => project
+            .comment_tracks
+            .iter()
+            .position(|track| track.id == *track_id)?,
         TrackAddress::Caption { track_id } => project
             .caption_tracks
             .iter()
@@ -91,6 +97,7 @@ impl InspectorController {
             return Ok(());
         };
         let enabled = match track {
+            TrackMut::Comment(track) => &mut track.enabled,
             TrackMut::Caption(track) => &mut track.enabled,
             TrackMut::Video(track) => &mut track.enabled,
             TrackMut::Audio(track) => &mut track.enabled,

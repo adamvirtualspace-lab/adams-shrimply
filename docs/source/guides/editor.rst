@@ -19,6 +19,7 @@ Inspector
 The inspector follows the current selection:
 
 * Project controls cover canvas and project-wide properties.
+* Comment controls cover content and a named color.
 * Caption controls cover text, writing direction, layout, and appearance.
 * Visual controls cover compositing, transforms, playback, stabilization, and
   modifiers.
@@ -35,7 +36,7 @@ its optional metadata formats cannot be read.
 Timeline
 --------
 
-Projects organize content into caption, video, and audio tracks. Tracks can be
+Projects organize content into comment, caption, video, and audio tracks. Tracks can be
 enabled or disabled, and edits participate in the project undo and redo
 history. The timeline supports splitting, trimming, deleting, ripple cuts,
 clipboard operations, snapping, beat grids, and zooming.
@@ -48,3 +49,18 @@ Clip context actions include copy, cut, paste, modifier paste, grouping,
 ungrouping, folding sequences, copying or saving a frame, exporting audio,
 transcription, silence removal, and text-to-speech where the selected content
 supports the operation.
+
+Comment tracks
+~~~~~~~~~~~~~~
+
+Projects start without a comment track. Add one with **Add Comment Track** in
+the timeline's empty-track menu (or **New Track → Comment Track** in the GTK
+application menu). Use the track's **+** button and choose **Comment** to add a
+comment at the playhead, or double-click an empty part of the comment track.
+
+Drag a comment to move it and drag either edge to change its time range. Select
+it to edit its content and choose Red, Orange, Yellow, Green, Blue, or Purple in
+the inspector. Comments use the same selection, snapping, grouping, clipboard,
+splitting, and undo/redo operations as other timeline items. They are editing
+notes: they never appear in the preview or subtitle exports, and they do not
+extend the rendered project duration.

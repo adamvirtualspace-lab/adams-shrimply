@@ -1,4 +1,4 @@
-use crate::project::{AudioItem, CaptionItem, Time, VideoItem};
+use crate::project::{AudioItem, CaptionItem, CommentItem, Time, VideoItem};
 
 pub trait TimeSlice {
     fn start(&self) -> Time;
@@ -8,6 +8,16 @@ pub trait TimeSlice {
         self.end()
             .as_nonnegative_nanos()
             .saturating_sub(self.start().as_nonnegative_nanos())
+    }
+}
+
+impl TimeSlice for CommentItem {
+    fn start(&self) -> Time {
+        self.start
+    }
+
+    fn end(&self) -> Time {
+        self.end
     }
 }
 

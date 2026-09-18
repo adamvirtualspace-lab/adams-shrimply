@@ -344,6 +344,7 @@ manim-parameter-check: native-deps
 
 cargo-check: native-deps qt-native-deps
 	$(DEV_BUILD_ENV) QMAKE=$(QT_QMAKE) $(CARGO) check -p $(EDITOR_PACKAGE) -p $(QT_EDITOR_PACKAGE) -p $(LAUNCHER_PACKAGE) -p $(QT_LAUNCHER_PACKAGE) -p $(MCP_PACKAGE) --bins
+	$(DEV_BUILD_ENV) $(CARGO) check -p shrimply-inspector-document --lib
 
 frame-rate-test: native-deps
 	$(DEV_BUILD_ENV) $(CARGO) test -p shrimply-math-core frame_rate_is_the_reciprocal_of_the_latest_render_cost
@@ -383,6 +384,7 @@ fmt-check:
 
 lint: native-deps qt-native-deps
 	$(DEV_BUILD_ENV) QMAKE=$(QT_QMAKE) $(CARGO) clippy -p $(EDITOR_PACKAGE) -p $(QT_EDITOR_PACKAGE) -p $(LAUNCHER_PACKAGE) -p $(QT_LAUNCHER_PACKAGE) -p $(MCP_PACKAGE) --bins -- -D warnings
+	$(DEV_BUILD_ENV) $(CARGO) clippy -p shrimply-inspector-document --lib -- -D warnings
 
 test: cuda-artifacts
 	$(DEV_BUILD_ENV) $(CARGO) test

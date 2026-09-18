@@ -38,6 +38,24 @@ pub fn ripple_delete_item_addresses(
             .collect::<HashSet<_>>();
         let selected_indices = selected_indices(project, &track, &selected_ids)?;
         let changed = match project.track_mut(&track)? {
+            TrackMut::Comment(track) => {
+                let shift = ripple_track_shift_limit(
+                    &track.items,
+                    &selected_indices,
+                    &local_intervals,
+                    ripple_total_shift(&local_intervals),
+                );
+                ripple_track_items(
+                    &mut track.items,
+                    &selected_indices,
+                    &local_intervals,
+                    shift,
+                    |item, start, end| {
+                        item.start = start;
+                        item.end = end;
+                    },
+                )
+            }
             TrackMut::Caption(track) => {
                 let shift = ripple_track_shift_limit(
                     &track.items,
@@ -94,6 +112,7 @@ pub fn ripple_delete_item_addresses(
             }
         };
         match track.kind() {
+            ItemKind::Comment => {}
             ItemKind::Caption => captions |= changed,
             ItemKind::Video => video |= changed,
             ItemKind::Audio => audio |= changed,
@@ -145,6 +164,9 @@ pub fn ripple_trim_item_addresses(
             .timeline_time_to_sequence(&address.track(), cut)?
             .snapped(frame_step);
         match project.item_mut(address)? {
+            ItemMut::Comment(item) => {
+                item.trim_start(local_cut);
+            }
             ItemMut::Caption(item) => {
                 item.trim_start(local_cut);
                 captions = true;
@@ -167,6 +189,16 @@ pub fn ripple_trim_item_addresses(
         let selected_indices = HashSet::new();
         let shift = ripple_total_shift(&local_intervals);
         let changed = match project.track_mut(&track)? {
+            TrackMut::Comment(track) => ripple_track_items(
+                &mut track.items,
+                &selected_indices,
+                &local_intervals,
+                shift,
+                |item, start, end| {
+                    item.start = start;
+                    item.end = end;
+                },
+            ),
             TrackMut::Caption(track) => ripple_track_items(
                 &mut track.items,
                 &selected_indices,
@@ -199,6 +231,7 @@ pub fn ripple_trim_item_addresses(
             ),
         };
         match track.kind() {
+            ItemKind::Comment => {}
             ItemKind::Caption => captions |= changed,
             ItemKind::Video => video |= changed,
             ItemKind::Audio => audio |= changed,
@@ -241,6 +274,12 @@ fn selected_indices(
     selected_ids: &HashSet<uuid::Uuid>,
 ) -> Option<HashSet<usize>> {
     Some(match project.track(track)? {
+        crate::project::TrackRef::Comment(track) => track
+            .items
+            .iter()
+            .enumerate()
+            .filter_map(|(index, item)| selected_ids.contains(&item.id).then_some(index))
+            .collect(),
         crate::project::TrackRef::Caption(track) => track
             .items
             .iter()
@@ -292,6 +331,16 @@ pub fn delete_track_gap(
     let shift = gap.end.saturating_sub(gap.start);
     let selected = HashSet::new();
     let changed = match gap.track.kind {
+        TrackKind::Comment => ripple_track_items(
+            &mut project.comment_tracks.get_mut(gap.track.track_index)?.items,
+            &selected,
+            &intervals,
+            shift,
+            |item, start, end| {
+                item.start = start;
+                item.end = end;
+            },
+        ),
         TrackKind::Caption => ripple_track_items(
             &mut project.caption_tracks.get_mut(gap.track.track_index)?.items,
             &selected,

@@ -8,6 +8,7 @@ pub fn item_group_id(project: &Project, key: ItemKey) -> Option<u64> {
 
 pub fn item_address_group_id(project: &Project, address: &ItemAddress) -> Option<u64> {
     match project.item(address)? {
+        ItemRef::Comment(item) => item.group_id,
         ItemRef::Caption(item) => item.group_id,
         ItemRef::Video(item) => item.group_id,
         ItemRef::Audio(item) => item.group_id,
@@ -20,6 +21,7 @@ pub fn set_item_address_group_id(
     group_id: Option<u64>,
 ) -> bool {
     match project.item_mut(address) {
+        Some(ItemMut::Comment(item)) => item.group_id = group_id,
         Some(ItemMut::Caption(item)) => item.group_id = group_id,
         Some(ItemMut::Video(item)) => item.group_id = group_id,
         Some(ItemMut::Audio(item)) => item.group_id = group_id,
@@ -367,9 +369,10 @@ pub fn split_item_addresses(
     addresses.sort_by_key(|address| {
         (
             match address.kind() {
-                ItemKind::Caption => 0,
-                ItemKind::Video => 1,
-                ItemKind::Audio => 2,
+                ItemKind::Comment => 0,
+                ItemKind::Caption => 1,
+                ItemKind::Video => 2,
+                ItemKind::Audio => 3,
             },
             address.track_id(),
             address.item_id(),

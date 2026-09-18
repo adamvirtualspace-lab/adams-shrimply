@@ -549,7 +549,7 @@ fn apply_media(
     if entry
         .targets
         .iter()
-        .any(|target| target.kind == ClipKind::Caption)
+        .any(|target| matches!(target.kind, ClipKind::Comment | ClipKind::Caption))
     {
         return Err("only VTT files can target caption tracks".to_string());
     }
@@ -573,6 +573,7 @@ fn apply_media(
         let start = match kind {
             ClipKind::Video => starts.video,
             ClipKind::Audio => starts.audio,
+            ClipKind::Comment => None,
             ClipKind::Caption => None,
         }
         .ok_or_else(|| "import has no concrete presentation path for its target".to_string())?;
@@ -724,6 +725,10 @@ fn target_indices(
             let id = Uuid::parse_str(&target.track_id)
                 .map_err(|error| format!("invalid target track ID: {error}"))?;
             let index = match kind {
+                ClipKind::Comment => project
+                    .comment_tracks
+                    .iter()
+                    .position(|track| track.id == id),
                 ClipKind::Caption => project
                     .caption_tracks
                     .iter()
@@ -738,6 +743,13 @@ fn target_indices(
 
 fn append_tracks(project: &mut Project, kind: ClipKind, count: usize) -> Vec<usize> {
     let start = match kind {
+        ClipKind::Comment => {
+            let start = project.comment_tracks.len();
+            project
+                .comment_tracks
+                .resize_with(start + count, Default::default);
+            start
+        }
         ClipKind::Caption => {
             let start = project.caption_tracks.len();
             project
@@ -772,6 +784,7 @@ fn tracks_with_room(
     create: bool,
 ) -> Result<Vec<usize>, String> {
     let track_count = match kind {
+        ClipKind::Comment => project.comment_tracks.len(),
         ClipKind::Caption => project.caption_tracks.len(),
         ClipKind::Video => project.video_tracks.len(),
         ClipKind::Audio => project.audio_tracks.len(),
@@ -835,6 +848,9 @@ fn caption_tracks_with_room(
 
 fn root_track(project: &Project, kind: ClipKind, index: usize) -> ModelTrackAddress {
     match kind {
+        ClipKind::Comment => ModelTrackAddress::Comment {
+            track_id: project.comment_tracks[index].id,
+        },
         ClipKind::Caption => ModelTrackAddress::Caption {
             track_id: project.caption_tracks[index].id,
         },
@@ -851,6 +867,7 @@ fn root_track(project: &Project, kind: ClipKind, index: usize) -> ModelTrackAddr
 
 fn track_kind(kind: ClipKind) -> Result<TrackKind, String> {
     match kind {
+        ClipKind::Comment => Err("files cannot target comment tracks".to_string()),
         ClipKind::Caption => Err("only VTT files can target caption tracks".to_string()),
         ClipKind::Video => Ok(TrackKind::Video),
         ClipKind::Audio => Ok(TrackKind::Audio),
@@ -1061,6 +1078,7 @@ fn import_start(
         return Ok(None);
     }
     let item_kind = match kind {
+        ClipKind::Comment => ItemKind::Comment,
         ClipKind::Caption => ItemKind::Caption,
         ClipKind::Video => ItemKind::Video,
         ClipKind::Audio => ItemKind::Audio,

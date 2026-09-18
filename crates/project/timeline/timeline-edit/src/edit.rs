@@ -1,7 +1,7 @@
 use shrimply_math_core::fit_nonnegative_fraction_pair;
 use shrimply_project_document::project::{
-    AudioItem, AudioTrack, CaptionTrack, ItemAddress, ItemKind, ItemMut, ItemRef, Project,
-    ProjectItem, RepeatStrategy, SequenceScopeId, Time, TrackAddress, TrackMut, VideoItem,
+    AudioItem, AudioTrack, CaptionTrack, CommentTrack, ItemAddress, ItemKind, ItemMut, ItemRef,
+    Project, ProjectItem, RepeatStrategy, SequenceScopeId, Time, TrackAddress, TrackMut, VideoItem,
     VisualTrack, scaled_time_delta,
 };
 use shrimply_property_model::timeline_value::{TimelineBase, TimelineValue};
@@ -21,13 +21,22 @@ pub fn create_track(
     kind: ItemKind,
     enabled: bool,
 ) -> Result<Uuid, String> {
-    if kind == ItemKind::Caption && !scope.is_root() {
-        return Err("caption tracks can only be created in the root scope".to_string());
+    if matches!(kind, ItemKind::Caption | ItemKind::Comment) && !scope.is_root() {
+        return Err("caption and comment tracks can only be created in the root scope".to_string());
     }
     let sequence_id = project
         .sequence_id_for_scope(scope)
         .ok_or_else(|| "track scope does not resolve in the project".to_string())?;
     match (kind, sequence_id) {
+        (ItemKind::Comment, None) => {
+            let track = CommentTrack {
+                enabled,
+                ..Default::default()
+            };
+            let id = track.id;
+            project.comment_tracks.push(track);
+            Ok(id)
+        }
         (ItemKind::Caption, None) => {
             let track = CaptionTrack {
                 enabled,
@@ -69,6 +78,7 @@ pub fn create_track(
             }
             Ok(id)
         }
+        (ItemKind::Comment, Some(_)) => unreachable!(),
         (ItemKind::Caption, Some(_)) => unreachable!(),
     }
 }
@@ -123,6 +133,7 @@ pub fn trim_item(
         .ok_or_else(|| "clip was not found".to_string())?;
     item.set_times(start, end);
     match &mut item {
+        ProjectItem::Comment(_) => {}
         ProjectItem::Caption(_) => {}
         ProjectItem::Video(item) => {
             if start != old_start {
@@ -191,6 +202,7 @@ pub fn set_track_enabled(
         .track_mut(address)
         .ok_or_else(|| "track was not found".to_string())?
     {
+        TrackMut::Comment(track) => track.enabled = enabled,
         TrackMut::Caption(track) => track.enabled = enabled,
         TrackMut::Video(track) => track.enabled = enabled,
         TrackMut::Audio(track) => track.enabled = enabled,
@@ -211,7 +223,7 @@ pub fn set_caption_track_language(
             track.language = language;
             Ok(())
         }
-        TrackMut::Video(_) | TrackMut::Audio(_) => {
+        TrackMut::Comment(_) | TrackMut::Video(_) | TrackMut::Audio(_) => {
             Err("language applies only to caption tracks".to_string())
         }
     }
@@ -226,7 +238,7 @@ pub fn delete_track(project: &mut Project, address: &TrackAddress) -> Result<(),
     Ok(())
 }
 
-pub fn set_caption_text(
+pub fn set_item_text(
     project: &mut Project,
     address: &ItemAddress,
     text: String,
@@ -235,12 +247,16 @@ pub fn set_caption_text(
         .item_mut(address)
         .ok_or_else(|| "clip was not found".to_string())?
     {
+        ItemMut::Comment(item) => {
+            item.text = text;
+            Ok(())
+        }
         ItemMut::Caption(item) => {
             item.text = text;
             Ok(())
         }
         ItemMut::Video(_) | ItemMut::Audio(_) => {
-            Err("text applies only to caption clips".to_string())
+            Err("text applies only to caption and comment clips".to_string())
         }
     }
 }
@@ -298,7 +314,7 @@ pub fn set_audio_enabled(
             item.enabled = enabled;
             Ok(())
         }
-        ItemMut::Caption(_) | ItemMut::Video(_) => {
+        ItemMut::Comment(_) | ItemMut::Caption(_) | ItemMut::Video(_) => {
             Err("enabled applies only to audio clips".to_string())
         }
     }
@@ -332,7 +348,7 @@ pub fn set_audio_gain(
             item.gain.decibels = TimelineValue::new_const(gain_db);
             Ok(())
         }
-        ItemMut::Caption(_) | ItemMut::Video(_) => {
+        ItemMut::Comment(_) | ItemMut::Caption(_) | ItemMut::Video(_) => {
             Err("gain_db applies only to audio clips".to_string())
         }
     }
@@ -348,6 +364,7 @@ pub fn set_playback(
         .item_mut(address)
         .ok_or_else(|| "clip was not found".to_string())?
     {
+        ItemMut::Comment(_) => Err("playback properties do not apply to comment clips".to_string()),
         ItemMut::Caption(_) => Err("playback properties do not apply to caption clips".to_string()),
         ItemMut::Video(item) => {
             if let Some(speed) = speed {
@@ -411,6 +428,11 @@ pub fn collision_addresses(
         .track(track)
         .ok_or_else(|| "destination track was not found".to_string())?
     {
+        shrimply_project_document::project::TrackRef::Comment(track) => track
+            .items
+            .iter()
+            .map(|item| (item.id, item.start, item.end))
+            .collect::<Vec<_>>(),
         shrimply_project_document::project::TrackRef::Caption(track) => track
             .items
             .iter()
@@ -472,8 +494,8 @@ pub fn validate_properties_target(
         .item(address)
         .ok_or_else(|| "clip was not found".to_string())?
     {
-        ItemRef::Caption(_) if has_enabled || has_gain || has_playback => {
-            Err("one or more properties do not apply to caption clips".to_string())
+        ItemRef::Comment(_) | ItemRef::Caption(_) if has_enabled || has_gain || has_playback => {
+            Err("one or more properties do not apply to caption or comment clips".to_string())
         }
         ItemRef::Video(_) if has_text || has_enabled || has_gain => {
             Err("one or more properties do not apply to video clips".to_string())

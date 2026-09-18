@@ -168,6 +168,7 @@ fn surrounding_clip_transition_durations(
                 .map(|transition| transition.duration);
             Some((previous, next))
         }
+        crate::project::TrackRef::Comment(_) => None,
         crate::project::TrackRef::Caption(_) => None,
     }
 }

@@ -599,6 +599,22 @@ fn document(
                 .expect("transition inspector snapshot must include transition presentation"),
         ),
         InspectorTarget::Item(address) => match address {
+            ItemAddress::Comment { .. } => vec![list::InspectorCategory {
+                key: "comment",
+                label: "Comment",
+                icon: "rich-text-symbolic",
+                items: vec![
+                    item::InspectorItem::new(
+                        "comment",
+                        "Comment",
+                        shrimply_inspector_core::comment::section(
+                            &serde_json::from_value(snapshot.value.clone())
+                                .expect("comment must be valid"),
+                        ),
+                    )
+                    .boxed(),
+                ],
+            }],
             ItemAddress::Caption { .. } => caption::categories(&snapshot.value, &snapshot.details),
             ItemAddress::Audio { .. } => audio::categories(
                 &snapshot.value,

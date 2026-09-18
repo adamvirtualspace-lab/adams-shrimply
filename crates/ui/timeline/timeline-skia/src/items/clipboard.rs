@@ -43,6 +43,7 @@ pub fn copy_items(project: &Project, selected_items: &[ItemAddress]) -> Option<T
     let mut items = Vec::new();
     for address in selected_items {
         let item = match project.item(address)? {
+            ItemRef::Comment(item) => ProjectItem::Comment(item.clone()),
             ItemRef::Caption(item) => ProjectItem::Caption(item.clone()),
             ItemRef::Video(item) => ProjectItem::Video(Box::new(item.clone())),
             ItemRef::Audio(item) => ProjectItem::Audio(Box::new(item.clone())),
@@ -77,6 +78,15 @@ pub fn paste_items(
         sequence_instance_map: HashMap::new(),
         item_map: HashMap::new(),
     };
+    paste_comment_items(
+        project,
+        clipboard,
+        sequence_scope,
+        timeline_start,
+        &mut result,
+        &mut remapping.next_group_id,
+        &mut remapping.group_map,
+    );
     paste_caption_items(
         project,
         clipboard,
@@ -114,6 +124,10 @@ struct PasteRemapping {
 
 fn scoped_track_index(project: &Project, track: &TrackAddress) -> Option<usize> {
     match track {
+        TrackAddress::Comment { track_id } => project
+            .comment_tracks
+            .iter()
+            .position(|track| track.id == *track_id),
         TrackAddress::Caption { track_id } => project
             .caption_tracks
             .iter()
@@ -149,6 +163,77 @@ pub fn remap_item_group_id(
     })
 }
 
+pub fn paste_comment_items(
+    project: &mut Project,
+    clipboard: &TimelineClipboard,
+    sequence_scope: &SequenceScopeId,
+    start: Time,
+    result: &mut PasteResult,
+    next_group_id: &mut u64,
+    group_map: &mut HashMap<u64, u64>,
+) {
+    if !sequence_scope.is_root() {
+        return;
+    }
+    let items: Vec<_> = clipboard
+        .items
+        .iter()
+        .filter_map(|copied| match &copied.item {
+            ProjectItem::Comment(item) => Some((
+                copied.track_index,
+                copied.start_offset,
+                copied.duration,
+                item.clone(),
+            )),
+            ProjectItem::Caption(_) | ProjectItem::Video(_) | ProjectItem::Audio(_) => None,
+        })
+        .map(|(track_index, start_offset, duration, mut item)| {
+            item.id = uuid::Uuid::new_v4();
+            item.group_id = remap_item_group_id(next_group_id, group_map, item.group_id);
+            let item_start = start.saturating_add(start_offset);
+            (
+                track_index,
+                item_start,
+                item_start.saturating_add(duration),
+                item,
+            )
+        })
+        .collect();
+    if items.is_empty() {
+        return;
+    }
+
+    let (source_base, footprint) = paste_footprint(&items);
+    let target_base = choose_track_base(
+        project.comment_tracks.len(),
+        &footprint,
+        Some(source_base),
+        |track_index, start, end| {
+            timeline_search::collides(&project.comment_tracks[track_index].items, start, end)
+        },
+        |_, _, _| false,
+    );
+    ensure_tracks(
+        &mut project.comment_tracks,
+        target_base + track_footprint_span(&footprint),
+    );
+
+    for (source_track, start, end, mut item) in items {
+        let track_index = target_base + source_track - source_base;
+        item.start = start;
+        item.end = end;
+        let Some(track) = project.comment_tracks.get_mut(track_index) else {
+            continue;
+        };
+        let item_id = item.id;
+        insert_sorted(&mut track.items, item);
+        result.selection.push(ItemAddress::Comment {
+            track_id: track.id,
+            item_id,
+        });
+    }
+}
+
 pub fn paste_caption_items(
     project: &mut Project,
     clipboard: &TimelineClipboard,
@@ -171,7 +256,7 @@ pub fn paste_caption_items(
                 copied.duration,
                 item.clone(),
             )),
-            ProjectItem::Video(_) | ProjectItem::Audio(_) => None,
+            ProjectItem::Comment(_) | ProjectItem::Video(_) | ProjectItem::Audio(_) => None,
         })
         .map(|(track_index, start_offset, duration, mut item)| {
             item.id = uuid::Uuid::new_v4();
@@ -244,7 +329,7 @@ fn paste_video_items(
                 copied.duration,
                 item.as_ref().clone(),
             )),
-            ProjectItem::Caption(_) | ProjectItem::Audio(_) => None,
+            ProjectItem::Comment(_) | ProjectItem::Caption(_) | ProjectItem::Audio(_) => None,
         })
         .filter_map(|(track_index, start_offset, duration, mut item)| {
             let source_id = item.id;
@@ -350,7 +435,7 @@ fn paste_audio_items(
                 copied.duration,
                 item.as_ref().clone(),
             )),
-            ProjectItem::Caption(_) | ProjectItem::Video(_) => None,
+            ProjectItem::Comment(_) | ProjectItem::Caption(_) | ProjectItem::Video(_) => None,
         })
         .filter_map(|(track_index, start_offset, duration, mut item)| {
             let source_id = item.id;

@@ -1160,6 +1160,7 @@ fn target_details(
                 return Vec::new();
             };
             let (kind, start, end, natural_duration, source_offset, dimensions, file) = match item {
+                ItemRef::Comment(item) => ("Comment", item.start, item.end, None, None, None, None),
                 ItemRef::Caption(item) => ("Caption", item.start, item.end, None, None, None, None),
                 ItemRef::Video(item) => (
                     video_title(item),
@@ -1283,6 +1284,7 @@ pub(crate) fn target_runtime(
                 shrimply_project_document::project::generated_item_time(item, sequence_time)
             }
             ItemRef::Audio(item) => Some(sequence_time.saturating_sub(item.start)),
+            ItemRef::Comment(item) => Some(sequence_time.saturating_sub(item.start)),
             ItemRef::Caption(item) => Some(sequence_time.saturating_sub(item.start)),
         }
     });
@@ -1331,11 +1333,13 @@ pub(crate) fn target_value(project: &Project, target: &InspectorTarget) -> Optio
         InspectorTarget::Project => Some(("Project".to_string(), serialize(project))),
         InspectorTarget::Item(address) => {
             let title = match project.item(address)? {
+                ItemRef::Comment(_) => "Comment",
                 ItemRef::Caption(_) => "Caption",
                 ItemRef::Video(item) => video_title(item),
                 ItemRef::Audio(item) => audio_title(item),
             };
             let value = match project.item(address)? {
+                ItemRef::Comment(item) => serialize(item),
                 ItemRef::Caption(item) => serialize(item),
                 ItemRef::Video(item) => serialize(item),
                 ItemRef::Audio(item) => serialize(item),
@@ -1380,12 +1384,14 @@ pub(crate) fn target_value(project: &Project, target: &InspectorTarget) -> Optio
                         )
                     }
                 }
+                ItemRef::Comment(_) => return None,
                 ItemRef::Caption(_) => return None,
             };
             Some((title.to_string(), value))
         }
         InspectorTarget::Track(address) => {
             let (title, value) = match project.track(address)? {
+                TrackRef::Comment(track) => ("Comment Track", serialize(track)),
                 TrackRef::Caption(track) => ("Caption Track", serialize(track)),
                 TrackRef::Video(track) => ("Video Track", serialize(track)),
                 TrackRef::Audio(track) => ("Audio Track", serialize(track)),
@@ -1407,6 +1413,7 @@ pub(crate) fn replace_target(
                 .item_mut(address)
                 .ok_or_else(|| "inspector item is no longer available".to_string())?
             {
+                ItemMut::Comment(item) => *item = deserialize(value)?,
                 ItemMut::Caption(item) => *item = deserialize(value)?,
                 ItemMut::Video(item) => *item = deserialize(value)?,
                 ItemMut::Audio(item) => *item = deserialize(value)?,
@@ -1436,6 +1443,9 @@ pub(crate) fn replace_target(
                     } = Some(deserialize(value)?);
                 }
             }
+            ItemMut::Comment(_) => {
+                return Err("comments do not have inspector transitions".to_string());
+            }
             ItemMut::Caption(_) => {
                 return Err("captions do not have inspector transitions".to_string());
             }
@@ -1444,6 +1454,7 @@ pub(crate) fn replace_target(
             .track_mut(address)
             .ok_or_else(|| "inspector track is no longer available".to_string())?
         {
+            TrackMut::Comment(track) => *track = deserialize(value)?,
             TrackMut::Caption(track) => *track = deserialize(value)?,
             TrackMut::Video(track) => *track = deserialize(value)?,
             TrackMut::Audio(track) => *track = deserialize(value)?,

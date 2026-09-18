@@ -2,6 +2,7 @@ use super::*;
 
 mod audio;
 mod caption;
+mod comment;
 mod video;
 
 #[derive(Clone, Copy)]
@@ -78,6 +79,7 @@ pub fn draw_tracks(
         timeline_width,
     };
     let (first_visible_row, last_visible_row) = visible_row_range(view, content_height);
+    comment::draw(input, first_visible_row, last_visible_row);
     caption::draw(input, first_visible_row, last_visible_row);
     video::draw(
         &draw,

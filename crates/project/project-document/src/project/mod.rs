@@ -24,7 +24,9 @@ use shrimply_scene_3d::{AnimatedVec3, ObjScene};
 use shrimply_visual_modifiers::{ModifierEffect, ModifierModel};
 
 mod audio_generator;
+mod comment;
 mod conversion;
+pub use comment::{CommentColor, CommentItem, CommentTrack};
 mod generated;
 #[cfg(feature = "editor")]
 mod history;
@@ -133,6 +135,8 @@ pub struct Project {
     pub canvas_size: CanvasSize,
     #[serde(default, alias = "subtitle_tracks")]
     pub caption_tracks: Vec<CaptionTrack>,
+    #[serde(default)]
+    pub comment_tracks: Vec<CommentTrack>,
     #[serde(default, rename = "visual_tracks", alias = "video_tracks")]
     pub video_tracks: Vec<VisualTrack>,
     #[serde(default)]
@@ -158,6 +162,7 @@ impl Default for Project {
             fps: default_project_fps(),
             canvas_size: default_canvas_size(),
             caption_tracks: Vec::new(),
+            comment_tracks: Vec::new(),
             video_tracks: Vec::new(),
             audio_tracks: Vec::new(),
             folded_sequences: Vec::new(),

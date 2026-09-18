@@ -135,6 +135,7 @@ impl Scene {
                         .iter()
                         .filter_map(|track| edited.track(track))
                         .map(|track| match track {
+                            project::TrackRef::Comment(track) => track.items.len(),
                             project::TrackRef::Caption(track) => track.items.len(),
                             project::TrackRef::Video(track) => track.items.len(),
                             project::TrackRef::Audio(track) => track.items.len(),
@@ -194,8 +195,7 @@ impl Scene {
         }
         let player = player_state::snapshot(&self.player);
         let project = self.project.borrow();
-        let duration = project
-            .duration()
+        let duration = folded_sequence::expanded_timeline_end(&project)
             .max(player.duration)
             .max(Time::from_seconds(1));
         let minimum = min_seconds_per_pixel(frame_step_seconds(&project));

@@ -96,6 +96,14 @@ pub fn draw_text_drop_preview(
     };
     let y = row_screen_y(row, draw.view);
     match preview.kind {
+        TrackKind::Comment => draw_comment_item(
+            draw.painter,
+            &CommentItem::new(preview.start, preview.end, preview.text.clone()),
+            draw.timeline_x,
+            y,
+            draw.view,
+            false,
+        ),
         TrackKind::Caption => draw_caption_item(
             draw.painter,
             &CaptionItem::new(preview.start, preview.end, preview.text.clone()),
@@ -155,6 +163,18 @@ pub fn draw_dragged_group(
         let y = row_screen_y(row, draw.view);
 
         match item.key.kind {
+            TrackKind::Comment => {
+                if let Some(source) = project
+                    .comment_tracks
+                    .get(item.key.track_index)
+                    .and_then(|track| track.items.get(item.key.item_index))
+                {
+                    let mut preview = source.clone();
+                    preview.start = start;
+                    preview.end = end;
+                    draw_comment_item(draw.painter, &preview, draw.timeline_x, y, draw.view, false);
+                }
+            }
             TrackKind::Caption => {
                 if let Some(source) = project
                     .caption_tracks
@@ -283,7 +303,7 @@ pub fn draw_folded_new_track_preview(
             );
             draw_audio_item(draw, &item, item.start, y, true);
         }
-        Some(ItemRef::Caption(_)) | None => return,
+        Some(ItemRef::Comment(_)) | Some(ItemRef::Caption(_)) | None => return,
     }
     draw_item_drag_status_outline(
         draw.painter,
@@ -317,6 +337,7 @@ pub fn draw_preview_item_transitions(
     let color = match key.kind {
         TrackKind::Video => Color::BLUE1,
         TrackKind::Audio => Color::GREEN1,
+        TrackKind::Comment => return,
         TrackKind::Caption => return,
     };
     draw_item_transitions(
@@ -507,6 +528,18 @@ pub fn draw_resize_drag(
         };
         let y = row_screen_y(row, draw.view);
         match item.key.kind {
+            TrackKind::Comment => {
+                if let Some(source) = project
+                    .comment_tracks
+                    .get(item.key.track_index)
+                    .and_then(|track| track.items.get(item.key.item_index))
+                {
+                    let mut preview = source.clone();
+                    preview.start = start;
+                    preview.end = end;
+                    draw_comment_item(draw.painter, &preview, draw.timeline_x, y, draw.view, false);
+                }
+            }
             TrackKind::Caption => {
                 if let Some(source) = project
                     .caption_tracks
@@ -633,9 +666,10 @@ pub fn visual_row_for_virtual_track(
 
 pub fn kind_order(kind: TrackKind) -> usize {
     match kind {
-        TrackKind::Caption => 0,
-        TrackKind::Video => 1,
-        TrackKind::Audio => 2,
+        TrackKind::Comment => 0,
+        TrackKind::Caption => 1,
+        TrackKind::Video => 2,
+        TrackKind::Audio => 3,
     }
 }
 

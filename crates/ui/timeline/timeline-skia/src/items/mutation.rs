@@ -45,6 +45,28 @@ pub trait OverwriteItem: Clone + TimeSlice {
     fn set_group_id(&mut self, group_id: Option<u64>);
 }
 
+impl OverwriteItem for CommentItem {
+    fn trim_start(&mut self, start: Time) {
+        self.start = start;
+    }
+
+    fn set_end(&mut self, end: Time) {
+        self.end = end;
+    }
+
+    fn reset_id(&mut self) {
+        self.id = Uuid::new_v4();
+    }
+
+    fn group_id(&self) -> Option<u64> {
+        self.group_id
+    }
+
+    fn set_group_id(&mut self, group_id: Option<u64>) {
+        self.group_id = group_id;
+    }
+}
+
 impl OverwriteItem for CaptionItem {
     fn trim_start(&mut self, start: Time) {
         self.start = start;
@@ -148,6 +170,25 @@ impl OverwriteItem for AudioItem {
     }
 }
 
+pub fn overwrite_comment_items(
+    project: &mut Project,
+    placements: &[ItemPlacement],
+    new_track_indices: &[usize],
+) -> Option<()> {
+    for placement in placements
+        .iter()
+        .copied()
+        .filter(|placement| placement.key.kind == TrackKind::Comment)
+    {
+        let Some(track_index) = target_existing_track_index(new_track_indices, placement) else {
+            continue;
+        };
+        let items = &mut project.comment_tracks.get_mut(track_index)?.items;
+        overwrite_items(items, placement.start, placement.end);
+    }
+    Some(())
+}
+
 pub fn overwrite_caption_items(
     project: &mut Project,
     placements: &[ItemPlacement],
@@ -232,6 +273,28 @@ pub fn overwrite_items<T: OverwriteItem>(items: &mut Vec<T>, start: Time, end: T
             index += 1;
         }
     }
+}
+
+pub fn remove_comment_items(project: &mut Project, placements: &[ItemPlacement]) -> Option<()> {
+    let mut keys: Vec<_> = placements
+        .iter()
+        .map(|placement| placement.key)
+        .filter(|key| key.kind == TrackKind::Comment)
+        .collect();
+    keys.sort_by_key(|key| (key.track_index, key.item_index));
+    for key in keys.into_iter().rev() {
+        project
+            .comment_tracks
+            .get_mut(key.track_index)?
+            .items
+            .get(key.item_index)?;
+        project
+            .comment_tracks
+            .get_mut(key.track_index)?
+            .items
+            .remove(key.item_index);
+    }
+    Some(())
 }
 
 pub fn remove_caption_items(project: &mut Project, placements: &[ItemPlacement]) -> Option<()> {

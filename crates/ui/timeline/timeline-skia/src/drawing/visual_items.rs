@@ -53,6 +53,51 @@ pub(in crate::drawing) fn video_item_icon(content: &VideoItemContent) -> Icon {
     }
 }
 
+pub(in crate::drawing) fn draw_comment_item(
+    painter: &TimelinePainter,
+    item: &CommentItem,
+    x: f64,
+    y: f64,
+    view: TimelineViewState,
+    selected: bool,
+) {
+    let (clip_x, clip_width) = item_rect(item.start, item.end, x, view);
+    let (accent_color, border_color) = match item.color {
+        crate::project::CommentColor::Red => (Color::RED5, Color::RED1),
+        crate::project::CommentColor::Orange => (Color::ORANGE5, Color::ORANGE1),
+        crate::project::CommentColor::Yellow => (Color::YELLOW5, Color::YELLOW1),
+        crate::project::CommentColor::Green => (Color::GREEN5, Color::GREEN1),
+        crate::project::CommentColor::Blue => (Color::BLUE5, Color::BLUE1),
+        crate::project::CommentColor::Purple => (Color::PURPLE5, Color::PURPLE1),
+    };
+    draw_item_box(
+        painter,
+        rect(clip_x, y, clip_width, TRACK_HEIGHT),
+        accent_color,
+        selected,
+        border_color,
+    );
+    if !item.text.is_empty() {
+        let font_id = FontId::proportional(10.0);
+        let color = crate::theme::current().view_fg;
+        let max_width = (clip_width - ITEM_PADDING_X * 2.0 - 4.0).max(0.0) as f32;
+        painter
+            .with_clip_rect(rect(
+                clip_x + ITEM_PADDING_X,
+                y,
+                (clip_width - ITEM_PADDING_X * 2.0).max(1.0),
+                TRACK_HEIGHT,
+            ))
+            .system_text_ellipsized(
+                vec2((clip_x + ITEM_PADDING_X + 2.0) as f32, (y + 12.0) as f32),
+                &item.text,
+                font_id,
+                color,
+                max_width,
+            );
+    }
+}
+
 pub(in crate::drawing) fn draw_caption_item(
     painter: &TimelinePainter,
     item: &CaptionItem,

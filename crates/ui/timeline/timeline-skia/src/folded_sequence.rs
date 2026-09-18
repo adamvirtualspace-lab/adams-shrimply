@@ -301,6 +301,12 @@ impl FoldedDrag {
 
 fn concrete_tracks(project: &Project, kind: ItemKind, path: &[Uuid]) -> Vec<TrackAddress> {
     match kind {
+        ItemKind::Comment => project
+            .comment_tracks
+            .iter()
+            .filter(|_| path.is_empty())
+            .map(|track| TrackAddress::Comment { track_id: track.id })
+            .collect(),
         ItemKind::Caption => project
             .caption_tracks
             .iter()
@@ -392,6 +398,7 @@ fn apply_group_drag(
         }
         let mut item = candidate.take_item(&member.key)?;
         match &mut item {
+            ProjectItem::Comment(_) => return None,
             ProjectItem::Caption(_) => return None,
             ProjectItem::Video(item) => apply_video_drag(item, drag.kind, start, end),
             ProjectItem::Audio(item) => apply_audio_drag(item, drag.kind, start, end),
@@ -484,6 +491,10 @@ fn apply_group_drag(
 
 fn track_collides(project: &Project, track: &TrackAddress, start: Time, end: Time) -> bool {
     match project.track(track) {
+        Some(crate::project::TrackRef::Comment(track)) => track
+            .items
+            .iter()
+            .any(|item| item.start < end && item.end > start),
         Some(crate::project::TrackRef::Caption(track)) => track
             .items
             .iter()
@@ -507,6 +518,7 @@ fn overwrite_track(
     end: Time,
 ) -> Option<()> {
     match project.track_mut(track)? {
+        TrackMut::Comment(track) => overwrite_items(&mut track.items, start, end),
         TrackMut::Caption(track) => overwrite_items(&mut track.items, start, end),
         TrackMut::Video(track) => overwrite_items(&mut track.items, start, end),
         TrackMut::Audio(track) => overwrite_items(&mut track.items, start, end),
@@ -552,11 +564,17 @@ fn overwrite_drag(
     {
         return None;
     }
-    if address.kind() == ItemKind::Caption && kind != FoldedDragKind::Move {
+    if matches!(address.kind(), ItemKind::Comment | ItemKind::Caption)
+        && kind != FoldedDragKind::Move
+    {
         panic!("caption overwrite resizing must use the root resize operation");
     }
     let mut item = project.take_item(address)?;
     match &mut item {
+        ProjectItem::Comment(item) => {
+            item.start = start;
+            item.end = end;
+        }
         ProjectItem::Caption(item) => {
             item.start = start;
             item.end = end;
@@ -565,6 +583,9 @@ fn overwrite_drag(
         ProjectItem::Audio(item) => apply_audio_drag(item, kind, start, end),
     }
     match (project.track_mut(track), &item) {
+        (Some(TrackMut::Comment(track)), ProjectItem::Comment(_)) => {
+            overwrite_items(&mut track.items, start, end);
+        }
         (Some(TrackMut::Caption(track)), ProjectItem::Caption(_)) => {
             overwrite_items(&mut track.items, start, end);
         }
@@ -608,6 +629,7 @@ fn apply_audio_drag(item: &mut AudioItem, kind: FoldedDragKind, start: Time, end
 
 pub fn track_kind(address: &ItemAddress) -> TrackKind {
     match address.kind() {
+        ItemKind::Comment => TrackKind::Comment,
         ItemKind::Caption => TrackKind::Caption,
         ItemKind::Video => TrackKind::Video,
         ItemKind::Audio => TrackKind::Audio,
@@ -686,6 +708,7 @@ pub fn reference(project: &Project, key: ItemKey) -> Option<SequenceReference> {
             AudioSource::FoldedSequence(reference) => Some(reference),
             AudioSource::Media | AudioSource::Tts(_) | AudioSource::Generator(_) => None,
         },
+        TrackKind::Comment => None,
         TrackKind::Caption => None,
     }
 }
@@ -704,6 +727,7 @@ fn item_id(project: &Project, key: ItemKey) -> Option<Uuid> {
             .items
             .get(key.item_index)
             .map(|item| item.id),
+        TrackKind::Comment => None,
         TrackKind::Caption => None,
     }
 }
@@ -754,7 +778,14 @@ pub fn expanded(project: &Project, path: &[Uuid]) -> bool {
 }
 
 pub fn expanded_timeline_end(project: &Project) -> Time {
-    let mut end = project.duration();
+    let mut end = project
+        .comment_tracks
+        .iter()
+        .flat_map(|track| &track.items)
+        .map(|item| item.end)
+        .max()
+        .unwrap_or_default()
+        .max(project.duration());
     for track in &project.video_tracks {
         for host in &track.items {
             if let VideoItemContent::FoldedSequence(reference) = host.content

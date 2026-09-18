@@ -79,6 +79,7 @@ pub fn preview(
 pub fn apply(project: &mut Project, info: &MediaInfo, preview: &ImportPreview) -> ImportResult {
     for (kind, index) in &preview.virtual_tracks {
         match kind {
+            TrackKind::Comment => {}
             TrackKind::Caption => {}
             TrackKind::Video if *index <= project.video_tracks.len() => {
                 project.video_tracks.insert(*index, VideoTrack::default());

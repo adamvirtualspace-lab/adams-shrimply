@@ -49,6 +49,7 @@ pub fn track_label_action_at(
         match kind {
             TrackKind::Audio => Some((key, TrackLabelAction::AudioRecord)),
             TrackKind::Video => Some((key, TrackLabelAction::VideoRecord)),
+            TrackKind::Comment => Some((key, TrackLabelAction::Select)),
             TrackKind::Caption => Some((key, TrackLabelAction::Select)),
         }
     } else {
@@ -87,6 +88,10 @@ pub fn track_label_button_y(row_y: f64) -> f64 {
 
 pub fn track_enabled(project: &Project, key: TrackKey) -> bool {
     match key.kind {
+        TrackKind::Comment => project
+            .comment_tracks
+            .get(key.track_index)
+            .is_some_and(|track| track.enabled),
         TrackKind::Caption => project
             .caption_tracks
             .get(key.track_index)
@@ -104,6 +109,10 @@ pub fn track_enabled(project: &Project, key: TrackKey) -> bool {
 
 pub fn toggle_track_enabled(project: &mut Project, key: TrackKey) -> bool {
     let enabled = match key.kind {
+        TrackKind::Comment => project
+            .comment_tracks
+            .get_mut(key.track_index)
+            .map(|track| &mut track.enabled),
         TrackKind::Caption => project
             .caption_tracks
             .get_mut(key.track_index)

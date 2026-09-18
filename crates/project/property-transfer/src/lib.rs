@@ -60,7 +60,7 @@ impl Clipboard {
                 .cloned()
                 .map(Box::new)
                 .map(Payload::Audio),
-            ItemKind::Caption => None,
+            ItemKind::Comment | ItemKind::Caption => None,
         };
         self.payload.is_some()
     }

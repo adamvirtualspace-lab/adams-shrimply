@@ -114,6 +114,18 @@ impl Project {
     pub fn repair_frame_grid(&mut self) -> bool {
         let frame_step = self.frame_step();
         let mut changed = false;
+        for track in &mut self.comment_tracks {
+            let mut previous_end = None;
+            for item in &mut track.items {
+                changed |= repair_frame_aligned_times(
+                    &mut item.start,
+                    &mut item.end,
+                    &mut previous_end,
+                    self.fps,
+                    frame_step,
+                );
+            }
+        }
         for track in &mut self.caption_tracks {
             let mut previous_end = None;
             for item in &mut track.items {
@@ -382,6 +394,13 @@ impl Project {
                 })?;
             }
         }
+        for (track_index, track) in self.comment_tracks.iter().enumerate() {
+            validate_track_times(
+                "comment",
+                track_index,
+                track.items.iter().map(|item| (item.start, item.end)),
+            )?;
+        }
         for (track_index, track) in self.caption_tracks.iter().enumerate() {
             validate_track_times(
                 "caption",
@@ -440,6 +459,9 @@ impl Project {
 
     pub fn ensure_ids(&mut self) {
         let mut seen_track_ids = HashSet::new();
+        for track in &mut self.comment_tracks {
+            ensure_unique_id(&mut track.id, &mut seen_track_ids);
+        }
         for track in &mut self.caption_tracks {
             ensure_unique_id(&mut track.id, &mut seen_track_ids);
         }
@@ -460,6 +482,11 @@ impl Project {
 
         let mut seen_item_ids = HashSet::new();
         let mut seen_inspectable_ids = HashSet::new();
+        for track in &mut self.comment_tracks {
+            for item in &mut track.items {
+                ensure_unique_id(&mut item.id, &mut seen_item_ids);
+            }
+        }
         for track in &mut self.caption_tracks {
             for item in &mut track.items {
                 ensure_unique_id(&mut item.id, &mut seen_item_ids);
@@ -969,6 +996,18 @@ fn repair_frame_aligned_times(
 
 fn validate_project_frame_alignment(project: &Project) -> Result<(), String> {
     let frame_step = project.frame_step();
+    for (track_index, track) in project.comment_tracks.iter().enumerate() {
+        for (item_index, item) in track.items.iter().enumerate() {
+            validate_frame_aligned_times(
+                "comment",
+                track_index,
+                item_index,
+                item.start,
+                item.end,
+                frame_step,
+            )?;
+        }
+    }
     for (track_index, track) in project.caption_tracks.iter().enumerate() {
         for (item_index, item) in track.items.iter().enumerate() {
             validate_frame_aligned_times(

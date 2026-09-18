@@ -11,7 +11,9 @@ pub fn draw_track_toggle_icon(
     let icon = match (kind, enabled) {
         (TrackKind::Video, false) => Icon("eye-not-looking-symbolic"),
         (TrackKind::Video, true) => Icon("eye-open-negative-filled-symbolic"),
+        (TrackKind::Comment, false) => Icon("eye-not-looking-symbolic"),
         (TrackKind::Caption, false) => Icon("closed-captioning-off-symbolic"),
+        (TrackKind::Comment, true) => Icon("rich-text-symbolic"),
         (TrackKind::Caption, true) => Icon("closed-captioning-symbolic"),
         (TrackKind::Audio, false) => Icon("speaker-0-symbolic"),
         (TrackKind::Audio, true) => Icon("speaker-3-symbolic"),

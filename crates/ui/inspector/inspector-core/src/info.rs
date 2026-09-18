@@ -355,7 +355,9 @@ pub(crate) fn target_media(project: &Project, target: &InspectorTarget) -> Optio
             };
             (&item.file, selected)
         }
-        ItemRef::Caption(_) | ItemRef::Audio(_) | ItemRef::Video(_) => return None,
+        ItemRef::Comment(_) | ItemRef::Caption(_) | ItemRef::Audio(_) | ItemRef::Video(_) => {
+            return None;
+        }
     };
     (!file.path().as_os_str().is_empty()).then(|| InspectorMedia {
         path: file.path().to_path_buf(),

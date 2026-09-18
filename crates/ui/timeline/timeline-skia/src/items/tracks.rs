@@ -14,22 +14,41 @@ pub struct TrackRow {
 
 pub fn rows(project: &Project) -> Vec<TrackRow> {
     let mut rows = project
-        .caption_tracks
+        .comment_tracks
         .iter()
         .enumerate()
         .rev()
         .map(|(track_index, track)| {
             let root_key = TrackKey {
-                kind: TrackKind::Caption,
+                kind: TrackKind::Comment,
                 track_index,
             };
             TrackRow {
-                address: TrackAddress::Caption { track_id: track.id },
+                address: TrackAddress::Comment { track_id: track.id },
                 root_key: Some(root_key),
                 depth: 0,
             }
         })
         .collect::<Vec<_>>();
+    rows.extend(
+        project
+            .caption_tracks
+            .iter()
+            .enumerate()
+            .rev()
+            .map(|(track_index, track)| {
+                let root_key = TrackKey {
+                    kind: TrackKind::Caption,
+                    track_index,
+                };
+                TrackRow {
+                    address: TrackAddress::Caption { track_id: track.id },
+                    root_key: Some(root_key),
+                    depth: 0,
+                }
+            })
+            .collect::<Vec<_>>(),
+    );
     for (track_index, track) in project.video_tracks.iter().enumerate().rev() {
         let root_key = TrackKey {
             kind: TrackKind::Video,
@@ -158,6 +177,7 @@ fn append_audio_rows(
 pub fn color(kind: TrackKind) -> Color {
     match kind {
         TrackKind::Video => Color::ACCENT_BLUE,
+        TrackKind::Comment => Color::ACCENT_YELLOW,
         TrackKind::Caption => Color::ACCENT_YELLOW,
         TrackKind::Audio => Color::ACCENT_GREEN,
     }
@@ -203,6 +223,7 @@ pub fn target_track_at_y(
 
 pub fn track_count(project: &Project, kind: TrackKind) -> usize {
     match kind {
+        TrackKind::Comment => project.comment_tracks.len(),
         TrackKind::Caption => project.caption_tracks.len(),
         TrackKind::Video => project.video_tracks.len(),
         TrackKind::Audio => project.audio_tracks.len(),
@@ -316,14 +337,18 @@ fn displayed_before(kind: TrackKind, candidate: usize, target: usize) -> bool {
 }
 
 fn reversed(kind: TrackKind) -> bool {
-    matches!(kind, TrackKind::Caption | TrackKind::Video)
+    matches!(
+        kind,
+        TrackKind::Comment | TrackKind::Caption | TrackKind::Video
+    )
 }
 
 fn kind_order(kind: TrackKind) -> usize {
     match kind {
-        TrackKind::Caption => 0,
-        TrackKind::Video => 1,
-        TrackKind::Audio => 2,
+        TrackKind::Comment => 0,
+        TrackKind::Caption => 1,
+        TrackKind::Video => 2,
+        TrackKind::Audio => 3,
     }
 }
 
@@ -343,7 +368,8 @@ fn root_track_row_span(project: &Project, kind: TrackKind, track_index: usize) -
 }
 
 fn track_block_rows(project: &Project, kind: TrackKind) -> (usize, usize) {
-    let caption_end = project.caption_tracks.len();
+    let comment_end = project.comment_tracks.len();
+    let caption_end = comment_end + project.caption_tracks.len();
     let video_end = caption_end
         + project.video_tracks.len()
         + expanded_rows_before(project, TrackKind::Video, project.video_tracks.len());
@@ -351,7 +377,8 @@ fn track_block_rows(project: &Project, kind: TrackKind) -> (usize, usize) {
         + project.audio_tracks.len()
         + expanded_rows_before(project, TrackKind::Audio, project.audio_tracks.len());
     match kind {
-        TrackKind::Caption => (0, caption_end),
+        TrackKind::Comment => (0, comment_end),
+        TrackKind::Caption => (comment_end, caption_end),
         TrackKind::Video => (caption_end, video_end),
         TrackKind::Audio => (video_end, audio_end),
     }

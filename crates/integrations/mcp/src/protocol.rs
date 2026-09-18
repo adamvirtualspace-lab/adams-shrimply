@@ -34,6 +34,7 @@ pub struct ScopeRef {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ClipKind {
+    Comment,
     Caption,
     Video,
     Audio,

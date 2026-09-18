@@ -775,6 +775,15 @@ impl crate::scene::Scene {
             return false;
         }
         let item_index = match kind {
+            TrackKind::Comment => {
+                let Some(track) = project.comment_tracks.get_mut(track_index) else {
+                    return false;
+                };
+                crate::items::insert_sorted(
+                    &mut track.items,
+                    project::CommentItem::new(start, end, text),
+                )
+            }
             TrackKind::Caption => {
                 let Some(track) = project.caption_tracks.get_mut(track_index) else {
                     return false;

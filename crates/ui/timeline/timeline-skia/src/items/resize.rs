@@ -127,10 +127,56 @@ pub fn apply_resize_drag(project: &mut Project, drag: ResizeDrag) -> Option<Vec<
     }
 
     let mut selection = Vec::with_capacity(placements.len());
+    resize_comment_items(project, &placements, overwrite, &mut selection)?;
     resize_caption_items(project, &placements, overwrite, &mut selection)?;
     resize_video_items(project, &placements, overwrite, &mut selection)?;
     resize_audio_items(project, &placements, overwrite, &mut selection)?;
     Some(selection)
+}
+
+pub fn resize_comment_items(
+    project: &mut Project,
+    placements: &[ItemPlacement],
+    overwrite: bool,
+    selection: &mut Vec<ItemKey>,
+) -> Option<()> {
+    let mut resized = Vec::new();
+    for placement in placements
+        .iter()
+        .copied()
+        .filter(|placement| placement.key.kind == TrackKind::Comment)
+    {
+        let item = project
+            .comment_tracks
+            .get(placement.key.track_index)?
+            .items
+            .get(placement.key.item_index)?
+            .clone();
+        resized.push((placement, item));
+    }
+
+    remove_comment_items(project, placements)?;
+    if overwrite {
+        overwrite_comment_items(project, placements, &[])?;
+    }
+    for (placement, mut item) in resized {
+        item.start = placement.start;
+        item.end = placement.end;
+        let target_items = &mut project
+            .comment_tracks
+            .get_mut(placement.target_track_index)?
+            .items;
+        let item_index = insert_sorted(target_items, item);
+        push_moved_selection(
+            selection,
+            ItemKey {
+                kind: TrackKind::Comment,
+                track_index: placement.target_track_index,
+                item_index,
+            },
+        );
+    }
+    Some(())
 }
 
 pub fn resize_caption_items(
@@ -327,6 +373,7 @@ pub fn split_item_address(
         .timeline_time_to_sequence(&track, timeline_cut)?
         .snapped(project.frame_step());
     let source = match project.item(address)? {
+        ItemRef::Comment(item) => ProjectItem::Comment(item.clone()),
         ItemRef::Caption(item) => ProjectItem::Caption(item.clone()),
         ItemRef::Video(item) => ProjectItem::Video(Box::new(item.clone())),
         ItemRef::Audio(item) => ProjectItem::Audio(Box::new(item.clone())),
@@ -339,6 +386,11 @@ pub fn split_item_address(
     let mut left = source.clone();
     let mut right = source;
     match (&mut left, &mut right) {
+        (ProjectItem::Comment(left), ProjectItem::Comment(right)) => {
+            left.end = cut;
+            right.start = cut;
+            right.id = uuid::Uuid::new_v4();
+        }
         (ProjectItem::Caption(left), ProjectItem::Caption(right)) => {
             left.end = cut;
             right.start = cut;
@@ -402,6 +454,12 @@ pub fn split_item_address(
 
 pub fn item_times(project: &Project, key: ItemKey) -> Option<(Time, Time)> {
     match key.kind {
+        TrackKind::Comment => project
+            .comment_tracks
+            .get(key.track_index)?
+            .items
+            .get(key.item_index)
+            .map(|item| (item.start, item.end)),
         TrackKind::Caption => project
             .caption_tracks
             .get(key.track_index)?
@@ -425,6 +483,7 @@ pub fn item_times(project: &Project, key: ItemKey) -> Option<(Time, Time)> {
 
 pub fn item_source_offset(project: &Project, key: ItemKey) -> Option<Time> {
     match key.kind {
+        TrackKind::Comment => None,
         TrackKind::Caption => None,
         TrackKind::Video => project
             .video_tracks
@@ -511,6 +570,10 @@ pub fn resize_collides_with_track(
     placement: ItemPlacement,
 ) -> bool {
     match placement.key.kind {
+        TrackKind::Comment => project
+            .comment_tracks
+            .get(placement.target_track_index)
+            .is_none_or(|track| resize_collides_with_items(&track.items, drag, placement)),
         TrackKind::Caption => project
             .caption_tracks
             .get(placement.target_track_index)
@@ -554,6 +617,16 @@ pub fn resize_collision_indicators(
     let mut indicators = Vec::new();
     for placement in placements {
         match placement.key.kind {
+            TrackKind::Comment => {
+                if let Some(track) = project.comment_tracks.get(placement.target_track_index) {
+                    collect_resize_collision_indicators(
+                        &track.items,
+                        drag,
+                        *placement,
+                        &mut indicators,
+                    );
+                }
+            }
             TrackKind::Caption => {
                 if let Some(track) = project.caption_tracks.get(placement.target_track_index) {
                     collect_resize_collision_indicators(

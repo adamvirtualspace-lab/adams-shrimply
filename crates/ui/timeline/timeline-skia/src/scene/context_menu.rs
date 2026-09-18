@@ -120,6 +120,7 @@ impl Scene {
                     .collect::<Vec<_>>();
                 crate::item_context_menu(ItemMenuContext {
                     kind: match address.kind() {
+                        ItemKind::Comment => ContextItemKind::Comment,
                         ItemKind::Caption => ContextItemKind::Caption,
                         ItemKind::Video => ContextItemKind::Video,
                         ItemKind::Audio => ContextItemKind::Audio,
@@ -128,7 +129,9 @@ impl Scene {
                     can_paste_modifiers,
                     has_file: self.context.file.is_some(),
                     foldable: selected.len() >= 2
-                        && selected.iter().all(|item| item.kind() != ItemKind::Caption),
+                        && selected.iter().all(|item| {
+                            !matches!(item.kind(), ItemKind::Comment | ItemKind::Caption)
+                        }),
                     unlinkable_folder: folder
                         && items::item_address_group_id(&project, &address).is_some(),
                     folder,
@@ -162,6 +165,7 @@ impl Scene {
                     }
                     self.context.track = Some(row.address.clone());
                     self.context.menu = crate::track_context_menu(match key.kind {
+                        TrackKind::Comment => TrackMenuContext::Comment,
                         TrackKind::Caption => TrackMenuContext::Caption,
                         TrackKind::Video => TrackMenuContext::Video,
                         TrackKind::Audio => TrackMenuContext::Audio {
@@ -311,6 +315,7 @@ impl Scene {
                     .ok_or("No nested track is selected")?;
                 let project = self.project.borrow();
                 let count = match project.track(track) {
+                    Some(project::TrackRef::Comment(track)) => track.items.len(),
                     Some(project::TrackRef::Caption(track)) => track.items.len(),
                     Some(project::TrackRef::Video(track)) => track.items.len(),
                     Some(project::TrackRef::Audio(track)) => track.items.len(),

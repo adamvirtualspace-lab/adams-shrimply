@@ -25,6 +25,12 @@ pub trait TimelineOperationContext {
         if self.scope().is_root() {
             addresses.extend(
                 project
+                    .comment_tracks
+                    .iter()
+                    .map(|track| TrackAddress::Comment { track_id: track.id }),
+            );
+            addresses.extend(
+                project
                     .caption_tracks
                     .iter()
                     .map(|track| TrackAddress::Caption { track_id: track.id }),
@@ -56,6 +62,9 @@ pub trait TimelineOperationContext {
             .into_iter()
             .flat_map(|track| {
                 let item_ids = match project.track(&track) {
+                    Some(crate::project::TrackRef::Comment(track)) => {
+                        track.items.iter().map(|item| item.id).collect()
+                    }
                     Some(crate::project::TrackRef::Caption(track)) => {
                         track.items.iter().map(|item| item.id).collect()
                     }
@@ -90,6 +99,7 @@ pub trait TimelineOperationContext {
             return None;
         }
         match project.item(address)? {
+            ItemRef::Comment(_) => None,
             ItemRef::Caption(_) => None,
             ItemRef::Video(item) => {
                 if matches!(
@@ -206,7 +216,7 @@ pub trait TimelineOperationContext {
                 }
                 true
             }
-            Some(ItemMut::Caption(_)) | None => false,
+            Some(ItemMut::Comment(_)) | Some(ItemMut::Caption(_)) | None => false,
         }
     }
 
@@ -281,7 +291,7 @@ pub trait TimelineOperationContext {
                 }
                 true
             }
-            Some(TrackMut::Caption(_)) | None => false,
+            Some(TrackMut::Comment(_)) | Some(TrackMut::Caption(_)) | None => false,
         }
     }
 
@@ -377,7 +387,7 @@ pub trait TimelineOperationContext {
                 fit_audio_transitions(incoming);
                 true
             }
-            Some(TrackMut::Caption(_)) | None => false,
+            Some(TrackMut::Comment(_)) | Some(TrackMut::Caption(_)) | None => false,
         }
     }
 

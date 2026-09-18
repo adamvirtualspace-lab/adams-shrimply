@@ -41,6 +41,7 @@ pub fn draw_track_label_pane(
         let y = row_screen_y(row, view);
         let Some(key) = track_row.root_key else {
             let kind = match &track_row.address {
+                crate::project::TrackAddress::Comment { .. } => TrackKind::Comment,
                 crate::project::TrackAddress::Caption { .. } => TrackKind::Caption,
                 crate::project::TrackAddress::Video { .. } => TrackKind::Video,
                 crate::project::TrackAddress::Audio { .. } => TrackKind::Audio,
@@ -71,6 +72,7 @@ pub fn draw_track_label_pane(
         );
 
         let prefix = match key.kind {
+            TrackKind::Comment => 'C',
             TrackKind::Caption => 'S',
             TrackKind::Video => 'V',
             TrackKind::Audio => 'A',
@@ -141,6 +143,7 @@ pub fn draw_track_label_pane(
                 track_control_draw.active_audio_recording_key == Some(key),
                 "mic-1-symbolic",
             ),
+            TrackKind::Comment => return,
             TrackKind::Caption => return,
         };
         let record_color = if record_active {

@@ -649,6 +649,13 @@ fn focused_kind(state: &SharedSelectionState, kind: SelectedItemKind) -> Option<
 
 pub fn item_address(project: &Project, key: SelectedItem) -> Option<ItemAddress> {
     match key.kind {
+        SelectedItemKind::Comment => {
+            let track = project.comment_tracks.get(key.track_index)?;
+            Some(ItemAddress::Comment {
+                track_id: track.id,
+                item_id: track.items.get(key.item_index)?.id,
+            })
+        }
         SelectedItemKind::Caption => {
             let track = project.caption_tracks.get(key.track_index)?;
             Some(ItemAddress::Caption {
@@ -680,6 +687,17 @@ pub fn item_key(project: &Project, address: &ItemAddress) -> Option<SelectedItem
         return None;
     }
     let (kind, track_index, item_index) = match address {
+        ItemAddress::Comment { track_id, item_id } => {
+            let track_index = project
+                .comment_tracks
+                .iter()
+                .position(|track| track.id == *track_id)?;
+            let item_index = project.comment_tracks[track_index]
+                .items
+                .iter()
+                .position(|item| item.id == *item_id)?;
+            (SelectedItemKind::Comment, track_index, item_index)
+        }
         ItemAddress::Caption { track_id, item_id } => {
             let track_index = project
                 .caption_tracks
@@ -727,6 +745,9 @@ pub fn item_key(project: &Project, address: &ItemAddress) -> Option<SelectedItem
 
 pub fn track_address(project: &Project, key: SelectedTrack) -> Option<TrackAddress> {
     match key.kind {
+        SelectedItemKind::Comment => Some(TrackAddress::Comment {
+            track_id: project.comment_tracks.get(key.track_index)?.id,
+        }),
         SelectedItemKind::Caption => Some(TrackAddress::Caption {
             track_id: project.caption_tracks.get(key.track_index)?.id,
         }),
@@ -746,6 +767,13 @@ pub fn track_key(project: &Project, address: &TrackAddress) -> Option<SelectedTr
         return None;
     }
     let (kind, track_index) = match address {
+        TrackAddress::Comment { track_id } => (
+            SelectedItemKind::Comment,
+            project
+                .comment_tracks
+                .iter()
+                .position(|track| track.id == *track_id)?,
+        ),
         TrackAddress::Caption { track_id } => (
             SelectedItemKind::Caption,
             project

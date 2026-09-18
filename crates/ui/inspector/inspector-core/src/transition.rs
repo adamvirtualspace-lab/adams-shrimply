@@ -98,7 +98,7 @@ pub fn presentation(
                 capabilities: InspectorCapabilities::default(),
             })
         }
-        ItemAddress::Caption { .. } => None,
+        ItemAddress::Comment { .. } | ItemAddress::Caption { .. } => None,
     }
 }
 
@@ -270,7 +270,7 @@ fn set_kind(
             .ok_or_else(|| "audio transition is no longer available".to_string())?;
             transition.kind = deserialize(kind)?;
         }
-        ItemMut::Caption(_) => {
+        ItemMut::Comment(_) | ItemMut::Caption(_) => {
             return Err("captions do not have inspector transitions".to_string());
         }
     }

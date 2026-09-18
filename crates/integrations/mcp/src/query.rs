@@ -38,9 +38,13 @@ pub fn model_track_address(address: &TrackAddress) -> Result<ModelTrackAddress, 
     let track_id = parse_uuid(&address.track_id, "track_id")?;
     let sequence_path = parse_path(&address.sequence_path)?;
     match address.kind {
+        ClipKind::Comment if sequence_path.is_empty() => {
+            Ok(ModelTrackAddress::Comment { track_id })
+        }
         ClipKind::Caption if sequence_path.is_empty() => {
             Ok(ModelTrackAddress::Caption { track_id })
         }
+        ClipKind::Comment => Err("comment tracks cannot be nested".to_string()),
         ClipKind::Caption => Err("caption tracks cannot be nested".to_string()),
         ClipKind::Video => Ok(ModelTrackAddress::Video {
             sequence_path,
@@ -86,6 +90,7 @@ pub fn protocol_item_address(address: &ModelItemAddress) -> ClipAddress {
 
 pub fn model_kind(kind: ClipKind) -> ItemKind {
     match kind {
+        ClipKind::Comment => ItemKind::Comment,
         ClipKind::Caption => ItemKind::Caption,
         ClipKind::Video => ItemKind::Video,
         ClipKind::Audio => ItemKind::Audio,
@@ -94,6 +99,7 @@ pub fn model_kind(kind: ClipKind) -> ItemKind {
 
 fn protocol_kind(kind: ItemKind) -> ClipKind {
     match kind {
+        ItemKind::Comment => ClipKind::Comment,
         ItemKind::Caption => ClipKind::Caption,
         ItemKind::Video => ClipKind::Video,
         ItemKind::Audio => ClipKind::Audio,
@@ -438,6 +444,7 @@ fn selected_stream_index(
     let kind = match presentation.address.kind {
         ClipKind::Video => "video",
         ClipKind::Audio => "audio",
+        ClipKind::Comment => return None,
         ClipKind::Caption => return None,
     };
     let ordinal = clip.metadata.get("track_id")?.as_u64()? as usize;
@@ -558,6 +565,10 @@ fn in_requested_scope(
         );
     }
     let scopes = match address.kind {
+        ClipKind::Comment => {
+            return snapshot.active_scope.instance_path.is_empty()
+                && address.sequence_path.is_empty();
+        }
         ClipKind::Caption => {
             return snapshot.active_scope.instance_path.is_empty()
                 && address.sequence_path.is_empty();
@@ -645,6 +656,16 @@ fn scope_tracks(project: &Project, scope: &ScopeRef) -> Result<Vec<TrackSummary>
     let path = parse_path(&scope.sequence_path)?;
     let mut tracks = Vec::new();
     if path.is_empty() {
+        tracks.extend(project.comment_tracks.iter().map(|track| TrackSummary {
+            address: TrackAddress {
+                kind: ClipKind::Comment,
+                sequence_path: Vec::new(),
+                track_id: track.id.to_string(),
+            },
+            enabled: track.enabled,
+            language: None,
+            clip_count: track.items.len(),
+        }));
         tracks.extend(project.caption_tracks.iter().map(|track| TrackSummary {
             address: TrackAddress {
                 kind: ClipKind::Caption,
@@ -694,6 +715,12 @@ fn track_summary(project: &Project, address: &TrackAddress) -> Result<TrackSumma
         .track(&model)
         .ok_or_else(|| "track was not found".to_string())?
     {
+        TrackRef::Comment(track) => Ok(TrackSummary {
+            address: address.clone(),
+            enabled: track.enabled,
+            language: None,
+            clip_count: track.items.len(),
+        }),
         TrackRef::Caption(track) => Ok(TrackSummary {
             address: address.clone(),
             enabled: track.enabled,
@@ -761,6 +788,24 @@ fn concrete_scope_paths(project: &Project) -> Vec<Vec<String>> {
 
 fn presentations(project: &Project) -> Result<Vec<Presentation>, String> {
     let mut output = Vec::new();
+    for track in &project.comment_tracks {
+        for item in &track.items {
+            let address = ModelTrackAddress::Comment { track_id: track.id }.item(item.id);
+            push_presentation(
+                project,
+                &address,
+                PresentationData {
+                    enabled: track.enabled,
+                    source_kind: "comment".to_string(),
+                    source_path: None,
+                    label: item.text.clone(),
+                    state: json!({ "text": item.text, "color": item.color }),
+                    metadata: serde_json::to_value(item).expect("comment item must serialize"),
+                },
+                &mut output,
+            )?;
+        }
+    }
     for track in &project.caption_tracks {
         for item in &track.items {
             let address = ModelTrackAddress::Caption { track_id: track.id }.item(item.id);

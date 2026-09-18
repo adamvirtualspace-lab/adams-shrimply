@@ -14,6 +14,7 @@ pub use track_add::*;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TrackAddAction {
+    Comment,
     Import,
     Text,
     Shape,
@@ -32,6 +33,7 @@ impl TrackAddAction {
                 "Import Captions…"
             }
             Self::Import => "Import Media…",
+            Self::Comment => "Comment",
             Self::Text => "Text",
             Self::Shape => "Shape",
             Self::Paint => "Paint",
@@ -46,6 +48,7 @@ impl TrackAddAction {
     pub const fn icon(self) -> &'static str {
         match self {
             Self::Import => "document-open-symbolic",
+            Self::Comment => "rich-text-symbolic",
             Self::Text => "draw-text-symbolic",
             Self::Shape => "shapes-large-symbolic",
             Self::Paint => "applications-graphics-symbolic",
@@ -70,6 +73,7 @@ pub const fn track_add_menu(
     use TrackAddAction::*;
     use TrackAddMenuEntry::*;
     match kind {
+        shrimply_timeline_edit::TrackKind::Comment => &[Action(Comment)],
         shrimply_timeline_edit::TrackKind::Caption => &[Action(Import)],
         shrimply_timeline_edit::TrackKind::Video => &[
             Action(Import),
@@ -192,10 +196,10 @@ pub mod selection;
 use audio::beat::BeatMap;
 use audio::waveform::{self, WaveformMap};
 use project::{
-    AudioItem, CaptionItem, Project, RepeatStrategy, Time, TransitionSide, VideoItemContent,
-    generated_item_keyframe_span, generated_item_natural_end_position, generated_item_natural_span,
-    media_item_natural_end_position, media_natural_end_interval, media_real_span,
-    scaled_time_delta, video_natural_end_interval,
+    AudioItem, CaptionItem, CommentItem, Project, RepeatStrategy, Time, TransitionSide,
+    VideoItemContent, generated_item_keyframe_span, generated_item_natural_end_position,
+    generated_item_natural_span, media_item_natural_end_position, media_natural_end_interval,
+    media_real_span, scaled_time_delta, video_natural_end_interval,
 };
 use renderer::{Align2, FontId, Rect, Stroke, StrokeKind, TimelinePainter, Vec2, vec2};
 pub use shrimply_cross_ui_theme as theme;

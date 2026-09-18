@@ -53,7 +53,7 @@ fn available(project: &Project, target: &InspectorTarget) -> bool {
                         TransitionSide::Outro => item.transitions.outro.is_some(),
                     }
             }
-            Some(ItemRef::Caption(_)) | None => false,
+            Some(ItemRef::Comment(_)) | Some(ItemRef::Caption(_)) | None => false,
         },
     }
 }
@@ -68,6 +68,7 @@ pub(crate) fn keyframe_range(project: &Project, address: &ItemAddress) -> Option
                 Some(shrimply_project_document::project::generated_item_animation_time(item, time))
             }
             ItemRef::Audio(item) => Some(time.signed_sub(item.start)),
+            ItemRef::Comment(item) => Some(time.signed_sub(item.start)),
             ItemRef::Caption(item) => Some(time.signed_sub(item.start)),
         }
     };

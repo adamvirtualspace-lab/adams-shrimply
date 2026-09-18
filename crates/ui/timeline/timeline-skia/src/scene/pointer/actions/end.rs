@@ -184,6 +184,7 @@ pub(in crate::scene::pointer) fn end_pointer_action(
                     };
                     for key in &cut.keys {
                         match key.kind() {
+                            crate::project::ItemKind::Comment => {}
                             crate::project::ItemKind::Caption => change.captions = true,
                             crate::project::ItemKind::Video => change.video = true,
                             crate::project::ItemKind::Audio => {
