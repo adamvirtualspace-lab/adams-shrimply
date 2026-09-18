@@ -414,3 +414,83 @@ fn marker_interpolation(marker: &str) -> (&str, Interpolation) {
     };
     (&marker[..marker.len() - last.len_utf8()], interpolation)
 }
+
+/// Project source markers through the clip trim and constant playback speed.
+/// Points stay points until the final conversion to editable comment ranges.
+pub fn project_marker_range(
+    marker: (Time, Time),
+    clip: (Time, Time),
+    source_start: Time,
+    speed: Fraction,
+    frame_step: Time,
+) -> Option<(Time, Time)> {
+    let project = |time: Time| Time {
+        seconds: clip.0.seconds + (time.seconds - source_start.seconds) / speed,
+    };
+    if marker.0 == marker.1 {
+        let point = project(marker.0);
+        if point < clip.0 || point >= clip.1 {
+            return None;
+        }
+        let point = point
+            .snapped(frame_step)
+            .min(clip.1.signed_sub(frame_step))
+            .max(clip.0);
+        return Some((point, point));
+    }
+    let (start, end) = if speed < Fraction::from(0_u64) {
+        // Reverse playback samples the last included source frame first.
+        (
+            project(marker.1.signed_sub(frame_step)),
+            project(marker.0.signed_sub(frame_step)),
+        )
+    } else {
+        (project(marker.0), project(marker.1))
+    };
+    let start = start.max(clip.0);
+    let end = end.min(clip.1);
+    if start >= end {
+        return None;
+    }
+    let start = start
+        .snapped(frame_step)
+        .min(clip.1.signed_sub(frame_step))
+        .max(clip.0);
+    let end = end
+        .snapped(frame_step)
+        .max(start.saturating_add(frame_step))
+        .min(clip.1);
+    Some((start, end))
+}
+
+pub fn comment_color(
+    rgb: shrimply_project_document::Color<u8>,
+) -> shrimply_project_document::CommentColor {
+    use shrimply_project_document::{Color, CommentColor};
+    let palette = [
+        (CommentColor::Red, Color::RED3),
+        (CommentColor::Orange, Color::ORANGE3),
+        (CommentColor::Yellow, Color::YELLOW3),
+        (CommentColor::Green, Color::GREEN3),
+        (CommentColor::Blue, Color::BLUE3),
+        (CommentColor::Purple, Color::PURPLE3),
+    ];
+    let rgb = rgb
+        .to_rgb_array()
+        .map(|channel| f32::from(channel) / f32::from(u8::MAX));
+    palette
+        .into_iter()
+        .min_by(|(_, left), (_, right)| {
+            let distance = |color: Color| {
+                color
+                    .to_rgb_array()
+                    .into_iter()
+                    .zip(rgb)
+                    .map(|(left, right)| (left - right).powi(2))
+                    .sum::<f32>()
+            };
+            distance(*left).total_cmp(&distance(*right))
+        })
+        .expect("comment palette is nonempty")
+        .0
+}

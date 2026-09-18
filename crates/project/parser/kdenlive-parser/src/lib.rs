@@ -1,4 +1,5 @@
 mod ass;
+mod comments;
 mod effects;
 mod math;
 mod xml;
@@ -99,6 +100,7 @@ pub fn from_file(path: impl AsRef<Path>) -> Result<ImportResult, Box<dyn Error +
     }
 
     main.caption_tracks = converter.caption_tracks(active)?;
+    let comment_tracks = converter.comment_tracks(active, main_bin)?;
     let project = Project {
         name: path
             .file_stem()
@@ -108,6 +110,7 @@ pub fn from_file(path: impl AsRef<Path>) -> Result<ImportResult, Box<dyn Error +
         fps,
         canvas_size,
         caption_tracks: main.caption_tracks,
+        comment_tracks,
         video_tracks: main.video_tracks,
         audio_tracks: main.audio_tracks,
         folded_sequences,

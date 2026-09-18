@@ -76,8 +76,17 @@ Project and timeline
    * - Mixes, crossfades, wipes, tractor transitions, and track compositions
      - Not imported
      - The importer does not read MLT ``transition`` elements.
-   * - Clip groups, guides, markers, zones, notes, bin folders, thumbnails, and
-       unused bin clips
+   * - Timeline markers (guides) and clip markers
+     - Approximate
+     - Become comment-track items with their text. Range durations are preserved;
+       points become one-frame ranges with draggable edges. Clip markers are
+       positioned using each timeline instance's trims and constant speed,
+       including reverse playback. Referenced nested-sequence markers are
+       projected into the active timeline. Overlapping comments use separate
+       tracks, and duplicate audio/video instances are combined. Category colors
+       map to Shrimply's named palette. Imported comments are independent notes;
+       they no longer follow subsequent edits to their source clips.
+   * - Clip groups, zones, notes, bin folders, thumbnails, and unused bin clips
      - Not imported
      - These properties are not read.
    * - Preview guides and editor UI state
@@ -288,3 +297,15 @@ PDF, layered-image, subtitle, or recognized external generator files.
 
 An ordinary missing media file is not opened during conversion, so it may be
 reported only when Shrimply later tries to use that media.
+
+Marker format references
+------------------------
+
+The marker conversion follows Kdenlive's
+`MarkerListModel serialization <https://github.com/KDE/kdenlive/blob/master/src/bin/model/markerlistmodel.cpp>`_:
+``pos`` and ``duration`` are frame counts, ``comment`` is the content, and
+``type`` identifies a category. Clip markers are saved in ``kdenlive:markers``;
+timeline markers use ``kdenlive:sequenceproperties.guides``. Category colors
+come from ``kdenlive:docproperties.guidesCategories``. The
+`Kdenlive marker manual <https://docs.kdenlive.org/en/cutting_and_assembling/guides.html>`_
+explains point and range markers.
