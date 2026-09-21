@@ -31,14 +31,11 @@ pub fn install() {
         let context = last_context();
         let backtrace = Backtrace::force_capture();
 
-        eprintln!(
-            "shrimply crash: panic at {location} on thread {thread_name} {:?}: {payload}\nlast context: {context}\nbacktrace:\n{backtrace}",
+        let message = format!(
+            "shrimply crash: panic at {location} on thread {thread_name} {:?}: {payload}\nlast context: {context}\nbacktrace:\n{backtrace}\n",
             thread.id()
         );
-        tracing::error!(
-            "panic at {location} on thread {thread_name} {:?}: {payload}; last context: {context}\nbacktrace:\n{backtrace}",
-            thread.id()
-        );
+        write_crash_report(message.as_bytes());
     }));
 
     #[cfg(unix)]
@@ -178,6 +175,18 @@ unsafe fn write_signal_context() {
             }
             write_stderr(b"\n");
         }
+    }
+}
+
+fn write_crash_report(message: &[u8]) {
+    #[cfg(unix)]
+    unsafe {
+        write_stderr(message);
+    }
+    #[cfg(not(unix))]
+    {
+        use std::io::Write;
+        let _ = std::io::stderr().write_all(message);
     }
 }
 
