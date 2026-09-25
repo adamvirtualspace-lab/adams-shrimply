@@ -8,24 +8,30 @@ Building Shrimply from source requires around 70GB or more of free disk space
 and a reasonably modern machine. Due to the complexity of the development
 setup, using a coding agent to help with setup is recommended.
 
-The current development setup targets Fedora and uses the Rust toolchain in
-``rust-toolchain.toml``. Install the native dependencies with:
+Every platform uses the Rust toolchain pinned in ``rust-toolchain.toml``.
+Fedora is the reference Linux setup; install its native dependencies with:
 
 .. code-block:: console
 
    $ make deps-fedora
 
+The other supported setups are the Nix development shell below, macOS with the
+AppKit application, and Windows with the Qt application. Windows has its own
+dependencies and targets, covered in :doc:`windows`.
+
 The ``shrimply-slang-build`` crate's ``build.rs`` downloads the pinned Slang
 binary release and verifies its SHA-256 checksum. Downloads are locked and
 extracted atomically into a versioned cache under Cargo's build directory
 (``target/``, ignored by Git), shared across crate rebuilds. Slang is never
-compiled from source. The download requires ``curl``, ``tar``, and ``shasum``
-(macOS) or ``sha256sum`` (Linux). To use an existing binary distribution,
-set ``SLANG_LIBRARY_DIR`` and ``SLANG_INCLUDE_DIR`` to its library and header
-directories. Slang's prebuilt library compiles the compositor shaders to CUDA,
-and ``nvcc`` packages the CUDA artifacts. The supported CUDA
-Toolkit version is 12.9. In theory, NVIDIA GeForce GTX 900-series through RTX
-50-series GPUs should work, but this full range has not been verified.
+compiled from source. Prebuilt releases cover x86_64 and aarch64 macOS and
+Linux, and x86_64 Windows. The download requires ``curl`` and ``tar``; the
+build script verifies the checksum itself. To use an existing binary
+distribution, set ``SLANG_LIBRARY_DIR`` and ``SLANG_INCLUDE_DIR`` to its
+library and header directories. Slang's prebuilt library compiles the
+compositor shaders to CUDA, and ``nvcc`` packages the CUDA artifacts. The
+supported CUDA Toolkit version is 12.9. In theory, NVIDIA GeForce GTX
+900-series through RTX 50-series GPUs should work, but this full range has not
+been verified.
 
 Nix development environment
 ---------------------------
@@ -84,8 +90,10 @@ binary to ``target/debug/shrimply-qt``.
 dependencies and CUDA artifacts, formatting, source size, the selected Rust
 binaries, Clippy, the server and Manim Python code, and this documentation site.
 On macOS, it runs the AppKit build, Rust checks, and Clippy, plus formatting and
-source-size checks; it skips Python and documentation checks. Other platforms
-are unsupported. The development launcher writes its log to
+source-size checks; it skips Python and documentation checks. On Windows, it
+runs the same formatting and source-size checks, builds the CUDA artifacts,
+then type-checks and lints the Qt binaries. Other platforms are unsupported.
+The development launcher writes its log to
 ``target/shrimply-dev.log``.
 
 Build the documentation on its own with:
