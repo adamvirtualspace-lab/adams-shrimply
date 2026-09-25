@@ -29,6 +29,7 @@ Installation
 ------------
 
 * :doc:`Flatpak <flatpak>` covers installing and updating the Linux package.
+* :doc:`Windows <windows>` covers the portable Windows application.
 
 .. toctree::
    :maxdepth: 2
@@ -36,6 +37,7 @@ Installation
    :caption: Installation
 
    Flatpak <flatpak>
+   Windows <windows>
 
 Editing
 -------
