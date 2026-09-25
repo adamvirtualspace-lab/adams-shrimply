@@ -1,9 +1,10 @@
 use objc2::runtime::ProtocolObject;
 use objc2::{AnyThread, DefinedClass, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::{
-    NSDragOperation, NSDraggingDestination, NSDraggingInfo, NSEvent, NSEventModifierFlags,
-    NSPasteboard, NSPasteboardTypeFileURL, NSPasteboardTypePNG, NSPasteboardTypeString,
-    NSPasteboardTypeTIFF, NSPasteboardTypeURL, NSTrackingArea, NSTrackingAreaOptions, NSView,
+    NSAppearanceCustomization, NSAppearanceNameAqua, NSAppearanceNameDarkAqua, NSDragOperation,
+    NSDraggingDestination, NSDraggingInfo, NSEvent, NSEventModifierFlags, NSPasteboard,
+    NSPasteboardTypeFileURL, NSPasteboardTypePNG, NSPasteboardTypeString, NSPasteboardTypeTIFF,
+    NSPasteboardTypeURL, NSTrackingArea, NSTrackingAreaOptions, NSView,
 };
 use objc2_foundation::{MainThreadMarker, NSRect, NSSize, NSString, NSURL};
 use objc2_foundation::{NSArray, NSObjectProtocol};
@@ -1042,6 +1043,16 @@ impl CanvasView {
             );
             renderer.draw(surface_label, |canvas| {
                 self.ivars().surface_dirty.set(false);
+                // Custom Skia drawing does not inherit AppKit's appearance automatically.
+                let dark = unsafe {
+                    self.effectiveAppearance()
+                        .bestMatchFromAppearancesWithNames(&NSArray::from_slice(&[
+                            NSAppearanceNameAqua,
+                            NSAppearanceNameDarkAqua,
+                        ]))
+                        .is_some_and(|name| *name == *NSAppearanceNameDarkAqua)
+                };
+                shrimply_cross_ui_theme::set_dark(dark);
                 canvas.clear(shrimply_cross_ui_theme::current().view_bg);
                 canvas.scale((scale as f32, scale as f32));
                 match &mut *self.ivars().content.borrow_mut() {

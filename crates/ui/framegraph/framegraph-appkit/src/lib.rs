@@ -2,9 +2,12 @@
 
 use objc2::rc::Retained;
 use objc2::{AnyThread, DefinedClass, MainThreadOnly, define_class, msg_send, sel};
-use objc2_app_kit::{NSEvent, NSEventModifierFlags, NSTrackingArea, NSTrackingAreaOptions, NSView};
+use objc2_app_kit::{
+    NSAppearanceCustomization, NSAppearanceNameAqua, NSAppearanceNameDarkAqua, NSEvent,
+    NSEventModifierFlags, NSTrackingArea, NSTrackingAreaOptions, NSView,
+};
 use objc2_foundation::{
-    MainThreadMarker, NSObjectProtocol, NSRect, NSRunLoop, NSRunLoopCommonModes, NSSize,
+    MainThreadMarker, NSArray, NSObjectProtocol, NSRect, NSRunLoop, NSRunLoopCommonModes, NSSize,
 };
 use objc2_quartz_core::CADisplayLink;
 use shrimply_components_skia::canvas::TimelinePainter;
@@ -358,6 +361,16 @@ impl FrameGraphView {
             renderer.layer().setDrawableSize(drawable_size);
         }
         renderer.draw("Framegraph", |canvas| {
+            // Resolve this view's appearance even when used outside the editor.
+            let dark = unsafe {
+                self.effectiveAppearance()
+                    .bestMatchFromAppearancesWithNames(&NSArray::from_slice(&[
+                        NSAppearanceNameAqua,
+                        NSAppearanceNameDarkAqua,
+                    ]))
+                    .is_some_and(|name| *name == *NSAppearanceNameDarkAqua)
+            };
+            shrimply_cross_ui_theme::set_dark(dark);
             canvas.clear(shrimply_cross_ui_theme::current().view_bg);
             canvas.scale((scale as f32, scale as f32));
             let painter = TimelinePainter::new(canvas);
